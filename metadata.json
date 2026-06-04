@@ -1,0 +1,6 @@
+{
+  "name": "Progress Club",
+  "description": "A supportive mobile-first focus timer with a clean, friendly aesthetic, unique character crew, office rooms, and local persistence.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

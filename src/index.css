@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@layer utilities {
+  @keyframes drift {
+    0% { transform: translateX(-120px); }
+    100% { transform: translateX(350px); }
+  }
+
+  @keyframes rain {
+    0% { transform: translateY(-20px); }
+    100% { transform: translateY(20px); }
+  }
+
+  @keyframes rain-fall {
+    0% { transform: translateY(-180px); }
+    100% { transform: translateY(180px); }
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: rotate(0deg); }
+    50% { transform: rotate(3deg); }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% { box-shadow: 0 0 10px rgba(34, 197, 94, 0.2); }
+    50% { box-shadow: 0 0 20px rgba(34, 197, 94, 0.45); }
+  }
+
+  @keyframes zero-g-float {
+    0% { transform: translateY(0px) translateX(0px) rotate(0deg); }
+    25% { transform: translateY(-38px) translateX(45px) rotate(4deg); }
+    50% { transform: translateY(-12px) translateX(-45px) rotate(-3deg); }
+    75% { transform: translateY(-44px) translateX(30px) rotate(2deg); }
+    100% { transform: translateY(0px) translateX(0px) rotate(0deg); }
+  }
+}
+
+@theme {
+  --font-sans: 'Quicksand', Arial, sans-serif;
+  --font-mono: 'Quicksand', Arial, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #fafafa;
+  color: #0a0a0a;
+}
+
+.anim-rain-back {
+  animation: rain-fall 1.3s linear infinite;
+}
+
+.anim-rain-mid {
+  animation: rain-fall 0.85s linear infinite;
+}
+
+.anim-rain-fore {
+  animation: rain-fall 0.45s linear infinite;
+}
+
