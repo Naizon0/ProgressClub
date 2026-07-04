@@ -190,15 +190,20 @@ const ITEM_EXTRAS: Record<string, {
     rarity: 'VINTAGE KINETIC ★★★',
     rarityBadgeClass: 'bg-gradient-to-r from-fuchsia-100 to-pink-100 text-pink-700 border-pink-300 font-bold',
   },
+  'soccer-ball': {
+    effect: 'Increases foot coordination and physical stamina while seated, helping release fidget energy.',
+    rarity: 'STREET ATHLETE ★★',
+    rarityBadgeClass: 'bg-gradient-to-r from-blue-100 to-sky-100 text-blue-700 border-blue-300 font-semibold',
+  },
+  'basketball': {
+    effect: 'Channels MVP game-winning mindset. Highly dynamic spin physics for relentless focus blocks.',
+    rarity: 'CHAMPIONSHIP HARDCOURT ★★★',
+    rarityBadgeClass: 'bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 border-orange-300 font-semibold',
+  },
   'gold-trophy': {
     effect: 'Triple-gilded 24-karat high-shine monument reflecting supreme success and dedication.',
-    rarity: 'SUPREME TYCOON ★★★★★',
+    rarity: 'SUPREME TYCOON ★★★**',
     rarityBadgeClass: 'bg-gradient-to-r from-amber-100 via-yellow-100 to-amber-200 text-amber-800 border-yellow-400 font-extrabold animate-pulse',
-  },
-  'lazy-cat': {
-    effect: 'Features deep micro-harmonic purring waves and cozy sleep loops. Emits absolute mental calm.',
-    rarity: 'ELITE COMPANION ★★★★★',
-    rarityBadgeClass: 'bg-gradient-to-r from-emerald-100 to-teal-100 text-emerald-800 border-emerald-400 font-bold',
   },
   'bonsai-tree': {
     effect: 'A 400-year-old miniature pine symbolizing meticulous botanical discipline and clean thoughts.',

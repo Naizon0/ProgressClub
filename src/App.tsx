@@ -202,7 +202,7 @@ export default function App() {
       completedDates: [],
     }));
 
-    const buySub = data.subscriptionPlan === 'monthly' || data.subscriptionPlan === 'yearly';
+    const buySub = data.subscriptionPlan === 'weekly' || data.subscriptionPlan === 'monthly' || data.subscriptionPlan === 'yearly';
     
     let initialRooms = Array.from(new Set(['rooftop', data.recommendedRoom]));
     if (buySub) {
@@ -291,8 +291,6 @@ export default function App() {
     setTimerIsActive(false);
     setTimerPose('resting');
     setTimeLeft(timerDuration * 60);
-
-    alert("Focus session aborted. Your crew member is taking a rest posture, never judging, always ready when you are.");
   };
 
   // Compute stats helper definitions

@@ -1093,7 +1093,9 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
           {/* Subscription Option cards */}
           <div className="space-y-3">
             {[
-              { id: 'monthly', price: '$5.50 / lifetime', sub: 'Executive Suite Lifetime Access Pass - flat $5.50 once for full lifetime space access (one-time payment)', badge: 'lifetime offer' }
+              { id: 'weekly', name: 'Weekly Access', price: '$1.50 / week', sub: 'Weekly access to all features. Billed weekly. Cancel any time.', badge: '' },
+              { id: 'monthly', name: 'Monthly Access', price: '$5.50 / month', sub: 'Standard monthly plan. Cancel any time. Great for long-term consistency.', badge: '' },
+              { id: 'yearly', name: 'Lifetime Access', price: '$12.00 / lifetime', sub: 'One-time payment. Executive Suite Lifetime Access Pass. Never pay again.', badge: 'best value' }
             ].map((plan) => {
               const isSel = selectedPlan === plan.id;
               const isYearly = plan.id === 'yearly';
@@ -1119,7 +1121,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                       ✨ {plan.badge}
                     </span>
                   )}
-                  <h3 className="text-base font-bold text-[#0a0a0a] uppercase">{plan.id} Plan</h3>
+                  <h3 className="text-base font-bold text-[#0a0a0a] uppercase">{plan.name}</h3>
                   <p className={`text-lg font-extrabold ${isYearly ? 'text-amber-600' : 'text-[#22c55e]'}`}>{plan.price}</p>
                   <p className="text-xs text-[#1a1a1a]/65">{plan.sub}</p>
                 </button>

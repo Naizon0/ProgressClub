@@ -279,7 +279,12 @@ export const CrewCharacter: React.FC<CrewCharacterProps> = ({
       // Motionless
     }
   } else if (pose === 'focused') {
-    bodyAnimStyle = { transform: 'scale(1.02) rotate(3deg) skewX(2deg)', transformOrigin: 'bottom center' };
+    bodyAnimStyle = { 
+      animation: `breathing-${characterId} 2.5s ease-in-out infinite`,
+      transformOrigin: 'bottom center' 
+    };
+    leftArmStyle = { animation: 'floaty-arms 3.5s ease-in-out infinite' };
+    rightArmStyle = { animation: 'floaty-arms 3.5s ease-in-out infinite' };
   } else if (pose === 'typing') {
     bodyAnimStyle = { animation: `walk-bounce-${characterId} 0.5s ease-in-out infinite` };
     leftArmStyle = { animation: 'typing-stump-l 0.25s ease-in-out infinite' };

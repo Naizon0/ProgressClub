@@ -55,10 +55,45 @@ export const OfficeRoom: React.FC<OfficeRoomProps> = ({
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 
+  // Pinch & scale state
+  const [itemScales, setItemScales] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem('office_item_scales_v1');
+      return saved ? JSON.parse(saved) : {};
+    } catch (e) {
+      return {};
+    }
+  });
+
+  const [pinchState, setPinchState] = useState<{
+    itemId: string;
+    initialDistance: number;
+    initialScale: number;
+  } | null>(null);
+
+  const updateScale = (itemId: string, newScale: number) => {
+    const clamped = Math.max(0.4, Math.min(3.5, Math.round(newScale * 100) / 100));
+    setItemScales(prev => {
+      const next = { ...prev, [itemId]: clamped };
+      try {
+        localStorage.setItem('office_item_scales_v1', JSON.stringify(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const getDistance = (touches: React.TouchList | TouchList) => {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
   const DEFAULT_POSITIONS: Record<string, { x: number; y: number }> = {
     'lava-lamp': { x: 8, y: 15 },
+    'soccer-ball': { x: 22, y: 68 },
+    'basketball': { x: 74, y: 68 },
     'gold-trophy': { x: 62, y: 55 },
-    'lazy-cat': { x: 38, y: 68 },
     'bonsai-tree': { x: 88, y: 55 },
     'character': { x: 50, y: 35 },
   };
@@ -78,11 +113,34 @@ export const OfficeRoom: React.FC<OfficeRoomProps> = ({
     setActiveDragId(itemId);
   };
 
+  const handleTouchStart = (itemId: string, event: React.TouchEvent) => {
+    event.stopPropagation();
+    if (event.touches.length === 2) {
+      const dist = getDistance(event.touches);
+      const currentScale = itemScales[itemId] || 1;
+      setPinchState({
+        itemId,
+        initialDistance: dist,
+        initialScale: currentScale,
+      });
+      setActiveDragId(null);
+    } else if (event.touches.length === 1) {
+      setActiveDragId(itemId);
+    }
+  };
+
+  const handleWheel = (itemId: string, event: React.WheelEvent) => {
+    event.stopPropagation();
+    const currentScale = itemScales[itemId] || 1;
+    const change = event.deltaY < 0 ? 0.08 : -0.08;
+    updateScale(itemId, currentScale + change);
+  };
+
   useEffect(() => {
-    if (!activeDragId) return;
+    if (!activeDragId && !pinchState) return;
 
     const handleMove = (clientX: number, clientY: number) => {
-      if (!containerRef.current) return;
+      if (!activeDragId || !containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       
       let px = ((clientX - rect.left) / rect.width) * 100;
@@ -105,17 +163,28 @@ export const OfficeRoom: React.FC<OfficeRoomProps> = ({
     };
 
     const handleTouchMove = (e: TouchEvent) => {
-      if (e.touches.length > 0) {
+      if (pinchState && e.touches.length === 2) {
+        const dist = getDistance(e.touches);
+        if (pinchState.initialDistance > 0 && dist > 0) {
+          const factor = dist / pinchState.initialDistance;
+          updateScale(pinchState.itemId, pinchState.initialScale * factor);
+        }
+      } else if (e.touches.length > 0 && activeDragId) {
         handleMove(e.touches[0].clientX, e.touches[0].clientY);
       }
     };
 
     const handleDragEnd = () => {
-      const finalPos = localPositions[activeDragId] || DEFAULT_POSITIONS[activeDragId];
-      if (finalPos && onUpdateItemPosition) {
-        onUpdateItemPosition(activeDragId, finalPos.x, finalPos.y);
+      if (activeDragId) {
+        const finalPos = localPositions[activeDragId] || DEFAULT_POSITIONS[activeDragId];
+        if (finalPos && onUpdateItemPosition) {
+          onUpdateItemPosition(activeDragId, finalPos.x, finalPos.y);
+        }
+        setActiveDragId(null);
       }
-      setActiveDragId(null);
+      if (pinchState) {
+        setPinchState(null);
+      }
     };
 
     window.addEventListener('mousemove', handleMouseMove);
@@ -129,7 +198,7 @@ export const OfficeRoom: React.FC<OfficeRoomProps> = ({
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleDragEnd);
     };
-  }, [activeDragId, localPositions, onUpdateItemPosition]);
+  }, [activeDragId, pinchState, localPositions, onUpdateItemPosition]);
 
   // Keep a clock ticking inside the room
   useEffect(() => {
@@ -1473,89 +1542,85 @@ export const OfficeRoom: React.FC<OfficeRoomProps> = ({
   const renderItemDecorations = () => {
     if (!equippedItems || equippedItems.length === 0) return null;
     
+    const renderItemContainer = (itemId: string, title: string, content: React.ReactNode) => {
+      const scale = itemScales[itemId] || 1;
+      const pos = getPos(itemId);
+      return (
+        <div
+          id={`decor-${itemId}`}
+          style={{
+            left: `${pos.x}%`,
+            top: `${pos.y}%`,
+            position: 'absolute',
+            touchAction: 'none',
+            transform: `scale(${scale})`,
+            transformOrigin: 'center center',
+          }}
+          onMouseDown={(e) => handleStartDrag(itemId, e)}
+          onTouchStart={(e) => handleTouchStart(itemId, e)}
+          onWheel={(e) => handleWheel(itemId, e)}
+          className="group flex flex-col items-center pointer-events-auto cursor-grab active:cursor-grabbing select-none"
+          title={`${title} (Drag to move, Pinch/Scroll/Click +/- to resize!)`}
+        >
+          {content}
+
+          {/* Sizing controller bubble on hover */}
+          <div className="absolute -bottom-8 bg-white/95 border border-[#2a2a2a] rounded-md px-1 py-0.5 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto scale-75 shadow-sm z-30">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                updateScale(itemId, scale - 0.1);
+              }}
+              className="w-4.5 h-4.5 flex items-center justify-center bg-stone-100 rounded text-[11px] font-black hover:bg-stone-200 cursor-pointer text-stone-700"
+            >
+              -
+            </button>
+            <span className="text-[9px] font-bold font-mono text-stone-600">
+              {Math.round(scale * 100)}%
+            </span>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                updateScale(itemId, scale + 0.1);
+              }}
+              className="w-4.5 h-4.5 flex items-center justify-center bg-stone-100 rounded text-[11px] font-black hover:bg-stone-200 cursor-pointer text-stone-700"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      );
+    };
+
     return (
       <div className="absolute inset-0 pointer-events-none z-25 select-none font-sans">
         {/* LAVA LAMP (Glows and pulses) */}
-        {equippedItems.includes('lava-lamp') && (
-          <div
-            id="decor-lava-lamp"
-            style={{
-              left: `${getPos('lava-lamp').x}%`,
-              top: `${getPos('lava-lamp').y}%`,
-              position: 'absolute',
-              touchAction: 'none',
-            }}
-            onMouseDown={(e) => handleStartDrag('lava-lamp', e)}
-            onTouchStart={(e) => handleStartDrag('lava-lamp', e)}
-            className="flex flex-col items-center animate-pulse pointer-events-auto cursor-grab active:cursor-grabbing select-none"
-            title="Retro Lava Lamp (Drag to Move!)"
-          >
+        {equippedItems.includes('lava-lamp') && renderItemContainer('lava-lamp', 'Retro Lava Lamp', (
+          <div className="flex flex-col items-center animate-pulse">
             <div className="text-xl filter drop-shadow-[0_0_8px_rgba(236,72,153,0.85)]">🔮</div>
             <div className="w-3.5 h-1 bg-amber-900 rounded-full border border-black/20" style={{ marginTop: '-2px' }}></div>
           </div>
-        )}
+        ))}
 
         {/* GOLD TROPHY (Bounces gold sparkles) */}
-        {equippedItems.includes('gold-trophy') && (
-          <div
-            id="decor-gold-trophy"
-            style={{
-              left: `${getPos('gold-trophy').x}%`,
-              top: `${getPos('gold-trophy').y}%`,
-              position: 'absolute',
-              touchAction: 'none',
-            }}
-            onMouseDown={(e) => handleStartDrag('gold-trophy', e)}
-            onTouchStart={(e) => handleStartDrag('gold-trophy', e)}
-            className="flex flex-col items-center pointer-events-auto cursor-grab active:cursor-grabbing select-none"
-            title="Gold Focus Trophy (Drag to Move!)"
-          >
-            <div className="text-xl filter drop-shadow-[0_4px_6px_rgba(251,191,36,0.6)] animate-bounce">🏆</div>
-          </div>
-        )}
+        {equippedItems.includes('gold-trophy') && renderItemContainer('gold-trophy', 'Gold Focus Trophy', (
+          <div className="text-xl filter drop-shadow-[0_4px_6px_rgba(251,191,36,0.6)] animate-bounce">🏆</div>
+        ))}
 
-        {/* SLEEPING MINI COMPANION BUDDY (Replaces the lazy cat item completely) */}
-        {equippedItems.includes('lazy-cat') && (
-          <div
-            id="decor-lazy-cat"
-            style={{
-              left: `${getPos('lazy-cat').x}%`,
-              top: `${getPos('lazy-cat').y}%`,
-              position: 'absolute',
-              touchAction: 'none',
-            }}
-            onMouseDown={(e) => handleStartDrag('lazy-cat', e)}
-            onTouchStart={(e) => handleStartDrag('lazy-cat', e)}
-            className="flex flex-col items-center pointer-events-auto cursor-grab active:cursor-grabbing select-none"
-            title="Cozy Sleeping Focus Buddy (Drag to Move!)"
-          >
-            <div className="absolute -top-2 left-3 text-[7px] font-black text-rose-500/70 animate-pulse flex items-center justify-center">zzz</div>
-            <div className="transform rotate-12 scale-75 filter drop-shadow">
-              <CrewCharacter characterId={characterId} pose="resting" height={45} />
-            </div>
-            {/* cozy pillow under them */}
-            <div className="w-10 h-2.5 bg-rose-200 border border-[#2a2a2a] rounded-full mt-[-6px] z-[-1]"></div>
-          </div>
-        )}
+        {/* SOCCER BALL (Bounces playfully) */}
+        {equippedItems.includes('soccer-ball') && renderItemContainer('soccer-ball', 'Classic Soccer Ball', (
+          <div className="text-xl filter drop-shadow-[0_4px_4px_rgba(0,0,0,0.3)] hover:animate-bounce">⚽</div>
+        ))}
+
+        {/* BASKETBALL (Spins smoothly) */}
+        {equippedItems.includes('basketball') && renderItemContainer('basketball', 'Championship Basketball', (
+          <div className="text-xl filter drop-shadow-[0_4px_4px_rgba(234,88,12,0.4)] hover:animate-spin">🏀</div>
+        ))}
 
         {/* BOTANICAL BONSAI TREE */}
-        {equippedItems.includes('bonsai-tree') && (
-          <div
-            id="decor-bonsai-tree"
-            style={{
-              left: `${getPos('bonsai-tree').x}%`,
-              top: `${getPos('bonsai-tree').y}%`,
-              position: 'absolute',
-              touchAction: 'none',
-            }}
-            onMouseDown={(e) => handleStartDrag('bonsai-tree', e)}
-            onTouchStart={(e) => handleStartDrag('bonsai-tree', e)}
-            className="flex flex-col items-center pointer-events-auto cursor-grab active:cursor-grabbing select-none"
-            title="Botanical Bonsai Tree (Drag to Move!)"
-          >
-            <div className="text-lg">🪴</div>
-          </div>
-        )}
+        {equippedItems.includes('bonsai-tree') && renderItemContainer('bonsai-tree', 'Botanical Bonsai Tree', (
+          <div className="text-lg">🪴</div>
+        ))}
       </div>
     );
   };
