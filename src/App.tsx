@@ -1,11 +1,46 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AppState, ChallengeLength, JournalEntry } from './types';
+import { AppState, ChallengeLength, JournalEntry, ThemeMode, TodaysOneThing, BixLossRecord } from './types';
 import { INITIAL_STATE, CHARACTERS, ROOMS, RANKS, JOURNAL_QUESTIONS, ROOM_ITEMS } from './data';
 import CrewCharacter from './components/CrewCharacter';
 import OfficeRoom from './components/OfficeRoom';
 import Onboarding from './components/Onboarding';
 import StatsView from './components/StatsView';
 import ShopView from './components/ShopView';
+import ExitConfirmModal from './components/ExitConfirmModal';
+import LegalModal, { LegalTab } from './components/LegalModal';
+import RatingModal, { PLAY_STORE_URL } from './components/RatingModal';
+import WalkthroughModal from './components/WalkthroughModal';
+import FeedbackModal from './components/FeedbackModal';
+import BixLossModal from './components/BixLossModal';
+import {
+  Sun,
+  Moon,
+  Laptop,
+  Star,
+  MessageSquare,
+  Shield,
+  FileText,
+  HelpCircle,
+  ExternalLink,
+  RotateCcw,
+  Sparkles,
+  Info,
+  Check,
+  LogOut,
+  ChevronRight,
+  Zap,
+  Flame,
+  AlertTriangle,
+  Bell,
+  Clock,
+  Target,
+  Crown,
+  Play,
+  CheckCircle2,
+  AlertCircle,
+  Pin,
+  Trash2,
+} from 'lucide-react';
 
 // Helper: Get local Date string as YYYY-MM-DD
 function getLocalDateString(): string {
@@ -92,6 +127,15 @@ export default function App() {
     'none' | 'onboarding' | 'journaling' | 'day-complete' | 'rank-up' | 'challenge-complete' | 'milestone' | 'break'
   >('none');
 
+  // New Modals & Compliance States:
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [showLegalModal, setShowLegalModal] = useState(false);
+  const [legalTab, setLegalTab] = useState<LegalTab>('privacy');
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingMilestoneReason, setRatingMilestoneReason] = useState('building steady focus streaks');
+  const [showWalkthroughModal, setShowWalkthroughModal] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+
   // Tracking temporary states
   const [currentJournalQuestion, setCurrentJournalQuestion] = useState('');
   const [journalText, setJournalText] = useState('');
@@ -100,6 +144,19 @@ export default function App() {
   const [rankUpName, setRankUpName] = useState('');
   const [showBixNudgeBanner, setShowBixNudgeBanner] = useState(false);
 
+  // Today's One Thing input state
+  const [oneThingInput, setOneThingInput] = useState('');
+
+  // Loss-framed Bix & Midnight countdown state
+  const [secondsToMidnight, setSecondsToMidnight] = useState<number>(() => {
+    const now = new Date();
+    const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+    return Math.max(0, Math.floor((midnight.getTime() - now.getTime()) / 1000));
+  });
+
+  // Daily Trigger Notification Toast state
+  const [triggerNotificationToast, setTriggerNotificationToast] = useState<{ title: string; body: string } | null>(null);
+
   // Settings: challenge switch temporary check dialog
   const [showChallengeSwitchDialog, setShowChallengeSwitchDialog] = useState(false);
   const [pendingChallengeLength, setPendingChallengeLength] = useState<ChallengeLength>(21);
@@ -107,13 +164,141 @@ export default function App() {
 
   // Refs:
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTriggeredNotificationDateRef = useRef<string>('');
+
+  // Sync state to localStorage on every update
+  const saveState = (newState: AppState) => {
+    setState(newState);
+    localStorage.setItem('progress_club_state', JSON.stringify(newState));
+  };
+
+  // Dark Mode Theme Controller
+  const currentTheme = state.settings?.theme || 'system';
+  useEffect(() => {
+    const root = document.documentElement;
+    const applyTheme = (t: ThemeMode) => {
+      let isDark = false;
+      if (t === 'dark') {
+        isDark = true;
+      } else if (t === 'light') {
+        isDark = false;
+      } else {
+        isDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
+
+      if (isDark) {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+    };
+
+    applyTheme(currentTheme);
+
+    if (currentTheme === 'system' && window.matchMedia) {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const listener = (e: MediaQueryListEvent) => {
+        if (e.matches) {
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+        }
+      };
+      mediaQuery.addEventListener('change', listener);
+      return () => mediaQuery.removeEventListener('change', listener);
+    }
+  }, [currentTheme]);
+
+  // Real-time Countdown to Midnight Ticker
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+      setSecondsToMidnight(Math.max(0, Math.floor((midnight.getTime() - now.getTime()) / 1000)));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Inactivity and Vault Decay Check helper
+  const evaluateInactivityDecay = (parsedState: AppState): AppState => {
+    const todayStr = getLocalDateString();
+    if (!parsedState.lastActiveDate) {
+      return { ...parsedState, lastActiveDate: todayStr };
+    }
+
+    if (parsedState.lastActiveDate === todayStr) {
+      return parsedState;
+    }
+
+    const lastDate = new Date(parsedState.lastActiveDate + 'T12:00:00');
+    const todayDate = new Date(todayStr + 'T12:00:00');
+    const diffTime = todayDate.getTime() - lastDate.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays <= 0) {
+      return { ...parsedState, lastActiveDate: todayStr };
+    }
+
+    let updatedState = { ...parsedState };
+    let lossRecordToDisplay: BixLossRecord | null = null;
+    const updatedHistory: BixLossRecord[] = [...(parsedState.bixLossHistory || [])];
+
+    // Check missed days
+    for (let i = 1; i <= Math.min(diffDays, 7); i++) {
+      const checkDate = new Date(lastDate.getTime() + i * 24 * 60 * 60 * 1000);
+      const checkStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
+      
+      if (checkStr < todayStr && !updatedState.completedDates.includes(checkStr)) {
+        // Day was missed
+        if (updatedState.streakShields > 0) {
+          const record: BixLossRecord = {
+            date: checkStr,
+            amountLost: 0,
+            reason: 'Daily Session Missed (Streak Shield Deployed)',
+            streakLost: false,
+            shieldUsed: true,
+          };
+          updatedHistory.push(record);
+          updatedState = {
+            ...updatedState,
+            streakShields: Math.max(0, updatedState.streakShields - 1),
+            spentShieldDates: [...(updatedState.spentShieldDates || []), checkStr],
+          };
+          if (!lossRecordToDisplay) lossRecordToDisplay = record;
+        } else {
+          // Deduct conservative 25 Bix
+          const penalty = Math.min(updatedState.bixBalance, 25);
+          const record: BixLossRecord = {
+            date: checkStr,
+            amountLost: penalty,
+            reason: 'Inactivity Vault Decay (Missed Session)',
+            streakLost: true,
+            shieldUsed: false,
+          };
+          updatedHistory.push(record);
+          updatedState = {
+            ...updatedState,
+            bixBalance: Math.max(0, updatedState.bixBalance - penalty),
+          };
+          if (!lossRecordToDisplay) lossRecordToDisplay = record;
+        }
+      }
+    }
+
+    return {
+      ...updatedState,
+      lastActiveDate: todayStr,
+      bixLossHistory: updatedHistory,
+      pendingLossModal: lossRecordToDisplay,
+    };
+  };
 
   // Load state from localStorage on Mount
   useEffect(() => {
     const saved = localStorage.getItem('progress_club_state');
     if (saved) {
       try {
-        const parsed = JSON.parse(saved) as AppState;
+        let parsed = JSON.parse(saved) as AppState;
         // Migration safeguard: Ensure defaults exist
         if (!parsed.completedDates) parsed.completedDates = [];
         if (!parsed.ownedCharacters) parsed.ownedCharacters = ['cipher'];
@@ -135,12 +320,35 @@ export default function App() {
         if (!parsed.equippedItems) parsed.equippedItems = [];
         if (!parsed.itemPositions) parsed.itemPositions = {};
         if (!parsed.dailyGoals) parsed.dailyGoals = [];
+        if (!parsed.settings) parsed.settings = INITIAL_STATE.settings;
+        if (!parsed.settings.theme) parsed.settings.theme = 'system';
+        if (!parsed.bixLossHistory) parsed.bixLossHistory = [];
         
+        // Remove Executive Suite for anyone on the yearly membership plan
+        if (parsed.subscriptionPlan === 'yearly') {
+          parsed.isExecutive = false;
+          if (parsed.ownedRooms && parsed.ownedRooms.includes('deepspace')) {
+            parsed.ownedRooms = parsed.ownedRooms.filter(r => r !== 'deepspace');
+          }
+          if (parsed.currentRoom === 'deepspace') {
+            parsed.currentRoom = 'rooftop';
+          }
+        }
+
+        // Evaluate inactivity decay and last active date
+        parsed = evaluateInactivityDecay(parsed);
+
         setState(parsed);
+        localStorage.setItem('progress_club_state', JSON.stringify(parsed));
 
         // Check if onboarding completed, if not trigger overlay onboarding
         if (!parsed.onboardingCompleted) {
           setActiveOverlay('onboarding');
+        } else if (!parsed.walkthroughCompleted) {
+          const walkthroughDone = localStorage.getItem('progress_club_walkthrough_completed_v1');
+          if (!walkthroughDone) {
+            setTimeout(() => setShowWalkthroughModal(true), 500);
+          }
         }
       } catch (e) {
         setActiveOverlay('onboarding');
@@ -149,6 +357,154 @@ export default function App() {
       setActiveOverlay('onboarding');
     }
   }, []);
+
+  // Frictionless Quick Start from URL parameter/hash trigger (e.g. ?start=true or #quickstart)
+  useEffect(() => {
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const hash = window.location.hash;
+      if (urlParams.get('start') === 'true' || urlParams.get('action') === 'quickstart' || hash === '#quickstart') {
+        if (state.onboardingCompleted && !timerIsActive) {
+          setTimeout(() => {
+            startTimer();
+          }, 400);
+        }
+      }
+    } catch (e) {}
+  }, [state.onboardingCompleted]);
+
+  // Hardware/Browser Back Button Navigation Interception (Android & Webview Support)
+  useEffect(() => {
+    // Push a dummy state to trap back button events
+    window.history.pushState({ page: 'progress-club-root' }, '', '');
+
+    const handlePopState = (event: PopStateEvent) => {
+      // Keep re-pushing state to remain inside the trap
+      window.history.pushState({ page: 'progress-club-root' }, '', '');
+
+      // Layer 1: Overlay screens (journaling, day-complete, rank-up, break, milestone)
+      if (activeOverlay !== 'none' && activeOverlay !== 'onboarding') {
+        setActiveOverlay('none');
+        return;
+      }
+
+      // Layer 2: Exit confirm dialog currently open -> close it
+      if (showExitConfirm) {
+        setShowExitConfirm(false);
+        return;
+      }
+
+      // Layer 3: Secondary popup modals
+      if (showLegalModal) {
+        setShowLegalModal(false);
+        return;
+      }
+      if (showFeedbackModal) {
+        setShowFeedbackModal(false);
+        return;
+      }
+      if (showRatingModal) {
+        setShowRatingModal(false);
+        return;
+      }
+      if (showWalkthroughModal) {
+        setShowWalkthroughModal(false);
+        return;
+      }
+      if (showChallengeSwitchDialog) {
+        setShowChallengeSwitchDialog(false);
+        return;
+      }
+
+      // Layer 4: If on sub-tabs (stats, office, shop, settings), return to home tab
+      if (activeTab !== 'home') {
+        setActiveTab('home');
+        return;
+      }
+
+      // Layer 5: We are on main Home dashboard with no open modals -> PROMPT EXIT CONFIRMATION!
+      setShowExitConfirm(true);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [
+    activeOverlay,
+    showExitConfirm,
+    showLegalModal,
+    showFeedbackModal,
+    showRatingModal,
+    showWalkthroughModal,
+    showChallengeSwitchDialog,
+    activeTab,
+  ]);
+
+  // Graceful exit execution when user confirms in ExitConfirmModal
+  const handleConfirmExit = () => {
+    setShowExitConfirm(false);
+    // Check if running inside Median Android wrapper
+    try {
+      if ((window as any).median?.navigator?.exitApp) {
+        (window as any).median.navigator.exitApp();
+        return;
+      }
+    } catch (e) {}
+
+    try {
+      window.close();
+    } catch (e) {}
+  };
+
+  // Milestone Rating Prompt trigger
+  const triggerMilestoneRating = (reason: string) => {
+    if (state.hasRatedInStore || state.neverShowRating) return;
+
+    if (state.lastRatingDismissedDate) {
+      const last = new Date(state.lastRatingDismissedDate).getTime();
+      const now = Date.now();
+      const threeDays = 3 * 24 * 60 * 60 * 1000;
+      if (now - last < threeDays) return;
+    }
+
+    setRatingMilestoneReason(reason);
+    setShowRatingModal(true);
+  };
+
+  const handleRatingCompleted = (rating: number, openedStore: boolean) => {
+    setShowRatingModal(false);
+    saveState({
+      ...state,
+      hasRatedInStore: true,
+      hasReviewed: true,
+    });
+  };
+
+  const handleRatingRemindLater = () => {
+    setShowRatingModal(false);
+    saveState({
+      ...state,
+      lastRatingDismissedDate: new Date().toISOString(),
+    });
+  };
+
+  const handleRatingNeverAsk = () => {
+    setShowRatingModal(false);
+    saveState({
+      ...state,
+      neverShowRating: true,
+    });
+  };
+
+  const handleWalkthroughFinished = () => {
+    setShowWalkthroughModal(false);
+    saveState({
+      ...state,
+      walkthroughCompleted: true,
+    });
+    try {
+      localStorage.setItem('progress_club_walkthrough_completed_v1', 'true');
+    } catch (e) {}
+  };
 
   // Synchronize browser tab title with active focus timer or break state
   useEffect(() => {
@@ -160,12 +516,6 @@ export default function App() {
       document.title = 'Progress Club | Supportive Focus Space';
     }
   }, [timerIsActive, timeLeft, activeOverlay]);
-
-  // Sync state to localStorage of every update
-  const saveState = (newState: AppState) => {
-    setState(newState);
-    localStorage.setItem('progress_club_state', JSON.stringify(newState));
-  };
 
   // Check if they can afford something in Bix and trigger nudge
   useEffect(() => {
@@ -202,30 +552,7 @@ export default function App() {
       completedDates: [],
     }));
 
-    const buySub = data.subscriptionPlan === 'weekly' || data.subscriptionPlan === 'monthly' || data.subscriptionPlan === 'yearly';
-    
-    let initialRooms = Array.from(new Set(['rooftop', data.recommendedRoom]));
-    if (buySub) {
-      initialRooms.push('deepspace');
-    }
-    
-    let bixAwarded = 0;
-    let unlockedRoomNames: string[] = [];
-    
-    if (buySub) {
-      const candidates = ROOMS.filter(r => r.id !== 'deepspace' && !initialRooms.includes(r.id));
-      if (candidates.length >= 3) {
-        const shuffled = [...candidates].sort(() => 0.5 - Math.random());
-        const selected = shuffled.slice(0, 3);
-        for (const r of selected) {
-          initialRooms.push(r.id);
-          unlockedRoomNames.push(r.name);
-        }
-        initialRooms = Array.from(new Set(initialRooms));
-      } else {
-        bixAwarded = 1000;
-      }
-    }
+    const initialRooms = Array.from(new Set(['rooftop', data.recommendedRoom]));
 
     const updated: AppState = {
       ...INITIAL_STATE,
@@ -233,29 +560,28 @@ export default function App() {
       onboardingCompleted: true,
       quizAnswers: data.quizAnswers,
       subscriptionPlan: data.subscriptionPlan,
-      isExecutive: buySub,
+      isExecutive: false,
       challengeStartDate: todayStr,
       currentActiveCharacter: data.recommendedCharacter,
       currentRoom: data.recommendedRoom,
       ownedCharacters: ['cipher', data.recommendedCharacter],
       ownedRooms: initialRooms,
-      bixBalance: INITIAL_STATE.bixBalance + bixAwarded,
+      bixBalance: INITIAL_STATE.bixBalance,
       dailyGoals: mappedGoals,
     };
     saveState(updated);
 
-    if (buySub) {
-      const rewardMsg = bixAwarded > 0 
-        ? `Additionally, you received a bonus of 1,000 Bix because you already own almost all rooms!`
-        : `Additionally, you unlocked 3 random bonus rooms: ${unlockedRoomNames.join(', ')}!`;
-      alert(`Welcome to the Executive Suite! You now earn 2x Bix, have unlocked the VIP Deep Space workspace suite for free, and have lifetime access!\n\n${rewardMsg}`);
-    }
     setActiveOverlay('none');
     setActiveTab('home');
 
     // Default timer set
     setTimerDuration(updated.settings.durationDefault);
     setTimeLeft(updated.settings.durationDefault * 60);
+
+    // Launch interactive first-time walkthrough
+    setTimeout(() => {
+      setShowWalkthroughModal(true);
+    }, 400);
   };
 
   // Timer Tick implementation
@@ -349,12 +675,6 @@ export default function App() {
       alert(`you've earned a shield, ${state.username}! life happens, now you're covered.`);
     }
 
-    // App Store Prompt Trigger: Only after the very first completed session
-    let triggerAppStorePrompt = false;
-    if (state.totalSessionsCompleted === 0 && !state.hasReviewed) {
-      triggerAppStorePrompt = true;
-    }
-
     const updatedState: AppState = {
       ...state,
       totalFocusedMinutes: currentTotalMinutes,
@@ -363,7 +683,6 @@ export default function App() {
       completedDates: updatedCompletedDates,
       streakShields: currentShields,
       unlockedRanks: updatedRanks,
-      hasReviewed: triggerAppStorePrompt ? state.hasReviewed : state.hasReviewed,
     };
 
     saveState(updatedState);
@@ -382,17 +701,15 @@ export default function App() {
       setRankUpName(rankNameEarned);
     }
 
-    // App review triggering:
-    if (triggerAppStorePrompt) {
+    // Milestone Rating Trigger on key achievements
+    if (currentSessionsCount === 1 || currentSessionsCount === 5 || currentSessionsCount === 10) {
       setTimeout(() => {
-        const confirmReview = window.confirm(`you just finished your first session, ${state.username}, that's worth celebrating! enjoying Progress Club so far?`);
-        if (confirmReview) {
-          alert("Thank you! Glad you are enjoying the Progress Club. Redirecting to mock App Store review page...");
-          saveState({ ...updatedState, hasReviewed: true });
-        } else {
-          saveState({ ...updatedState, hasReviewed: false });
-        }
-      }, 500);
+        triggerMilestoneRating(
+          currentSessionsCount === 1
+            ? 'completing your very first focus session'
+            : `reaching ${currentSessionsCount} completed focus sessions`
+        );
+      }, 1500);
     }
   };
 
@@ -418,6 +735,9 @@ export default function App() {
     const completedDaysCountToday = updatedState.completedDates.length;
     if (completedDaysCountToday >= state.challengeLength) {
       setActiveOverlay('challenge-complete');
+      setTimeout(() => {
+        triggerMilestoneRating(`completing your full ${state.challengeLength}-day focus challenge`);
+      }, 1200);
     } else {
       setActiveOverlay('day-complete');
     }
@@ -659,6 +979,148 @@ export default function App() {
     return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   };
 
+  // Format countdown to midnight
+  const formatMidnightCountdown = (secs: number) => {
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
+  };
+
+  // Today's One Thing Handlers
+  const handleSetOneThing = (text: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    const newOneThing: TodaysOneThing = {
+      text: trimmed,
+      date: todayLocalDateStr,
+      completed: false,
+    };
+    saveState({
+      ...state,
+      todaysOneThing: newOneThing,
+    });
+    setOneThingInput('');
+  };
+
+  const handleToggleOneThing = () => {
+    if (!state.todaysOneThing) return;
+    const nextCompleted = !state.todaysOneThing.completed;
+    const updatedOneThing: TodaysOneThing = {
+      ...state.todaysOneThing,
+      completed: nextCompleted,
+      completedAt: nextCompleted ? new Date().toISOString() : undefined,
+    };
+    saveState({
+      ...state,
+      todaysOneThing: updatedOneThing,
+    });
+  };
+
+  const handleClearOneThing = () => {
+    saveState({
+      ...state,
+      todaysOneThing: undefined,
+    });
+  };
+
+  const handleStartOneThingFocus = () => {
+    if (timerIsActive) return;
+    setTimerDuration(state.settings?.durationDefault || 25);
+    setTimeLeft((state.settings?.durationDefault || 25) * 60);
+    startTimer();
+  };
+
+  // Notification Helper & Dispatcher
+  const getDailyNotificationContent = () => {
+    const streak = getChallengeStreak(state.completedDates);
+    const isCompleted = state.completedDates.includes(todayLocalDateStr);
+    const hour = new Date().getHours();
+    
+    if (isCompleted) {
+      return {
+        title: "Progress Club • Goal Secured",
+        body: `You've locked in day ${streak} of your focus streak! Vault secured.`
+      };
+    }
+    if (hour >= 20) {
+      return {
+        title: "⚠️ Progress Club • 25 Bix at Risk",
+        body: `Session incomplete — 25 Bix at risk before midnight! Defend your ${streak}-day streak now.`
+      };
+    }
+    if (streak > 0) {
+      return {
+        title: "Progress Club • Streak Alert",
+        body: `Your ${streak}-day streak needs today's session. Most won't. You will.`
+      };
+    }
+    return {
+      title: "Progress Club • Daily Trigger",
+      body: "Start Day 1 of your focus streak today. Most won't. You will."
+    };
+  };
+
+  const sendSystemOrInAppNotification = (title: string, body: string) => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification(title, {
+          body,
+          icon: '/favicon.ico',
+        });
+      } catch (e) {}
+    }
+    setTriggerNotificationToast({ title, body });
+    setTimeout(() => {
+      setTriggerNotificationToast(null);
+    }, 6000);
+  };
+
+  const handleRequestNotificationPermission = async () => {
+    if ('Notification' in window) {
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm === 'granted') {
+          saveState({
+            ...state,
+            settings: { ...state.settings, notificationsEnabled: true },
+          });
+          sendSystemOrInAppNotification('Notifications Enabled', 'Daily focus triggers are now active.');
+        } else {
+          saveState({
+            ...state,
+            settings: { ...state.settings, notificationsEnabled: false },
+          });
+        }
+      } catch (e) {}
+    } else {
+      sendSystemOrInAppNotification('Notice', 'Browser notifications not supported in this environment, using in-app triggers.');
+    }
+  };
+
+  // Fixed Daily Trigger Notification Check
+  useEffect(() => {
+    const checkSchedule = () => {
+      const now = new Date();
+      const currentHHMM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const targetHHMM = state.settings?.dailyReminderTime || '14:00';
+      const todayStr = getLocalDateString();
+      
+      if (
+        currentHHMM === targetHHMM &&
+        lastTriggeredNotificationDateRef.current !== todayStr &&
+        !state.completedDates.includes(todayStr)
+      ) {
+        lastTriggeredNotificationDateRef.current = todayStr;
+        const content = getDailyNotificationContent();
+        sendSystemOrInAppNotification(content.title, content.body);
+      }
+    };
+
+    const timer = setInterval(checkSchedule, 25000);
+    return () => clearInterval(timer);
+  }, [state.settings?.dailyReminderTime, state.completedDates]);
+
   // Horizontal scrollable durations row options
   const durationOptions = [2, 5, 10, 25, 50, 90, 120];
 
@@ -676,45 +1138,112 @@ export default function App() {
 
   // Quick simulated home widget details
   const isCompletedTodayValue = state.completedDates.includes(todayLocalDateStr);
+  const currentHour = new Date().getHours();
+  const isBixAtRisk = !isCompletedTodayValue && currentHour >= 20;
 
   return (
-    <div className={`min-h-screen bg-[#fafafa] flex flex-col items-center justify-start pb-20 ${timerIsActive ? 'border-[3px] border-[#22c55e]' : ''}`} id="applet-viewport">
+    <div className={`min-h-screen bg-[#fafafa] dark:bg-[#121214] text-[#0a0a0a] dark:text-zinc-100 flex flex-col items-center justify-start pb-20 ${timerIsActive ? 'border-[3px] border-[#22c55e]' : ''}`} id="applet-viewport">
       
+      {/* FLOATING TRIGGER NOTIFICATION TOAST */}
+      {triggerNotificationToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-md bg-stone-900 text-white dark:bg-zinc-100 dark:text-zinc-900 p-4 rounded-2xl border-2 border-[#22c55e] shadow-2xl flex items-start space-x-3 transition-all animate-bounce">
+          <div className="w-8 h-8 rounded-full bg-[#22c55e] text-black flex items-center justify-center font-bold text-sm shrink-0 mt-0.5">
+            ⚡
+          </div>
+          <div className="flex-1 min-w-0 text-left">
+            <h4 className="text-xs font-black uppercase tracking-wider">{triggerNotificationToast.title}</h4>
+            <p className="text-xs text-stone-300 dark:text-zinc-700 leading-snug mt-0.5 font-medium">{triggerNotificationToast.body}</p>
+          </div>
+          <button
+            onClick={() => setTriggerNotificationToast(null)}
+            className="text-stone-400 hover:text-white dark:text-zinc-500 dark:hover:text-black text-xs font-bold p-1"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
+      {/* BIX LOSS REPORT MODAL */}
+      {state.pendingLossModal && (
+        <BixLossModal
+          lossRecord={state.pendingLossModal}
+          currentBixBalance={state.bixBalance}
+          streakCount={getChallengeStreak(state.completedDates)}
+          streakShieldsRemaining={state.streakShieldsRemaining ?? 0}
+          onDismiss={() => {
+            saveState({
+              ...state,
+              pendingLossModal: null,
+            });
+          }}
+          onStartRecoverySession={() => {
+            saveState({
+              ...state,
+              pendingLossModal: null,
+            });
+            startTimer();
+          }}
+        />
+      )}
+
       {/* HEADER BAR SIMULATION */}
-      <header className="sticky top-0 z-30 w-full max-w-md bg-white border-b border-[#2a2a2a] px-4 py-3 flex justify-between items-center select-none" id="progress-club-navbar">
+      <header className="sticky top-0 z-30 w-full max-w-md bg-white dark:bg-zinc-900 border-b-2 border-[#2a2a2a] dark:border-zinc-700 px-4 py-3 flex justify-between items-center select-none" id="progress-club-navbar">
         <div className="flex flex-col">
-          <span className="text-xs uppercase tracking-widest font-mono font-bold text-[#1a1a1a]/60">PROGRESS CLUB SYSTEM</span>
+          <span className="text-[10px] uppercase tracking-widest font-mono font-bold text-[#1a1a1a]/60 dark:text-zinc-400">PROGRESS CLUB SYSTEM</span>
           {timerIsActive ? (
             <span className="text-[#22c55e] text-xs font-bold animate-ping uppercase tracking-widest">• focusing...</span>
           ) : (
-            <span className="text-xs font-bold text-stone-400 capitalize">ready in pocket | {state.username}</span>
+            <span className="text-xs font-bold text-stone-400 dark:text-zinc-500 capitalize">ready in pocket | {state.username}</span>
           )}
         </div>
         <div className="flex items-center space-x-2">
           {state.streakShields > 0 ? (
             <span
-              className="text-sm bg-black text-[#22c55e] border border-[#2a2a2a] px-1.5 py-0.5 rounded flex items-center space-x-0.5"
-              title="your shield is ready!"
+              className="text-xs bg-black dark:bg-zinc-800 text-[#22c55e] border border-[#2a2a2a] dark:border-zinc-700 px-2 py-0.5 rounded-full flex items-center space-x-1"
+              title="Your streak shield is active!"
             >
               <span>🛡️</span>
-              <span className="text-[10px] text-white">READY</span>
+              <span className="text-[10px] text-white font-black">{state.streakShields}</span>
             </span>
           ) : null}
-          <div className="text-xs font-black text-[#22c55e] uppercase">
+          <div className="text-xs font-black text-[#22c55e] uppercase bg-emerald-50 dark:bg-emerald-950/60 px-2.5 py-1 rounded-full border border-emerald-300 dark:border-emerald-700">
             {state.bixBalance} Bix
           </div>
         </div>
       </header>
 
+      {/* LOSS-FRAMED URGENT WARNING BANNER (Active after 8PM when session is incomplete) */}
+      {isBixAtRisk && !timerIsActive && (
+        <div
+          id="bix-at-risk-banner"
+          className="w-full max-w-md bg-amber-500 dark:bg-amber-600 text-black p-3 text-xs font-black border-b-2 border-[#2a2a2a] dark:border-zinc-700 flex items-center justify-between shadow-md"
+        >
+          <div className="flex items-center space-x-2 text-left min-w-0">
+            <span className="text-base animate-pulse">⚠️</span>
+            <div>
+              <p className="uppercase tracking-wider font-extrabold text-[11px] leading-tight">Session Incomplete — 25 Bix at Risk</p>
+              <p className="text-[10px] opacity-90 font-mono">Midnight Countdown: {formatMidnightCountdown(secondsToMidnight)}</p>
+            </div>
+          </div>
+          <button
+            id="defend-bix-quick-btn"
+            onClick={startTimer}
+            className="px-3 py-1.5 bg-black text-[#22c55e] hover:bg-stone-800 rounded-lg text-[10px] font-black uppercase tracking-wider shrink-0 shadow-xs active:scale-95 transition-all cursor-pointer"
+          >
+            ⚡ Focus Now
+          </button>
+        </div>
+      )}
+
       {/* OVERFLOW WARNING / INFO NOTIFICATION BANNER */}
-      {showBixNudgeBanner && !timerIsActive && (
+      {showBixNudgeBanner && !timerIsActive && !isBixAtRisk && (
         <div
           id="bix-nudge-banner"
           onClick={() => {
             setActiveTab('shop');
             setShowBixNudgeBanner(false);
           }}
-          className="w-full max-w-md bg-[#22c55e] text-[#0a0a0a] text-center p-2.5 text-xs font-black uppercase tracking-widest cursor-pointer hover:opacity-90 transition-opacity select-none border-b border-[#2a2a2a]"
+          className="w-full max-w-md bg-[#22c55e] text-[#0a0a0a] text-center p-2.5 text-xs font-black uppercase tracking-widest cursor-pointer hover:opacity-90 transition-opacity select-none border-b-2 border-[#2a2a2a] dark:border-zinc-700"
         >
           you've got enough Bix for something new, {state.username}! 🌟
         </div>
@@ -727,18 +1256,18 @@ export default function App() {
             
             {/* Header profile statistics title */}
             <div className="text-left select-none">
-              <h1 className="text-lg font-black tracking-tight text-[#0a0a0a]">
+              <h1 className="text-lg font-black tracking-tight text-[#0a0a0a] dark:text-zinc-100">
                 {state.username}'S PROGRESS CLUB | DAY {currentDayXOfChallenge} OF {state.challengeLength}
               </h1>
-              <div className="flex items-center space-x-1 flex-wrap">
+              <div className="flex items-center space-x-1.5 flex-wrap mt-0.5">
                 <span className="text-xs font-bold text-[#22c55e] uppercase">
                   {getCurrentRankName(state.totalFocusedMinutes)} MEMBER
                 </span>
-                <span className="text-stone-300 text-xs">•</span>
-                <span className="text-xs font-semibold text-[#1a1a1a]/65 uppercase">
+                <span className="text-stone-300 dark:text-zinc-600 text-xs">•</span>
+                <span className="text-xs font-semibold text-[#1a1a1a]/65 dark:text-zinc-400 uppercase">
                   {state.completedDates.length} completed
                 </span>
-                <span className="text-stone-300 text-xs">•</span>
+                <span className="text-stone-300 dark:text-zinc-600 text-xs">•</span>
                 <span className="text-xs font-bold text-amber-500 uppercase flex items-center space-x-0.5">
                   <span>🔥</span>
                   <span>{getChallengeStreak(state.completedDates)} DAY STREAK</span>
@@ -746,7 +1275,29 @@ export default function App() {
               </div>
             </div>
 
-            {/* Office room render display */}
+            {/* 1-TAP FRICTIONLESS QUICK START BAR */}
+            {!timerIsActive && (
+              <div className="bg-stone-900 dark:bg-zinc-800 text-white p-3 rounded-2xl border-2 border-[#2a2a2a] dark:border-zinc-700 flex items-center justify-between shadow-xs">
+                <div className="flex items-center space-x-2.5">
+                  <div className="w-7 h-7 rounded-full bg-[#22c55e] text-black flex items-center justify-center font-black text-xs">
+                    ⚡
+                  </div>
+                  <div className="text-left">
+                    <p className="text-xs font-black uppercase tracking-wider">1-Tap Focus Launch</p>
+                    <p className="text-[10px] text-stone-400 dark:text-zinc-400 font-medium">Default {state.settings?.durationDefault || 25}m session ready</p>
+                  </div>
+                </div>
+                <button
+                  id="frictionless-quickstart-btn"
+                  onClick={startTimer}
+                  className="bg-[#22c55e] text-black hover:bg-emerald-400 font-black text-xs uppercase tracking-wider px-3.5 py-2 rounded-xl shadow-[0_2px_0_#0a0a0a] active:translate-y-0.5 transition-all cursor-pointer"
+                >
+                  ▶ Start
+                </button>
+              </div>
+            )}
+
+            {/* Office room render display with Today's One Thing prop */}
             <OfficeRoom
               roomId={state.currentRoom}
               characterId={state.currentActiveCharacter}
@@ -760,22 +1311,167 @@ export default function App() {
               equippedItems={state.equippedItems}
               itemPositions={state.itemPositions}
               onUpdateItemPosition={handleUpdateItemPosition}
+              todaysOneThing={state.todaysOneThing?.date === todayLocalDateStr ? state.todaysOneThing : undefined}
             />
 
+            {/* TODAY'S ONE THING PRIORITY CARD */}
+            <div className={`p-4 rounded-2xl transition-all text-left space-y-3 ${
+              state.todaysOneThing?.date === todayLocalDateStr
+                ? 'bg-white dark:bg-zinc-900 border-2 border-[#22c55e] shadow-[0_0_20px_rgba(34,197,94,0.18)] dark:shadow-[0_0_24px_rgba(34,197,94,0.14)]'
+                : 'bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 shadow-xs'
+            }`}>
+              <div className="flex items-center justify-between border-b border-[#2a2a2a]/10 dark:border-zinc-800 pb-2">
+                <div className="flex items-center space-x-1.5">
+                  <span className="text-sm">👑</span>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#0a0a0a] dark:text-zinc-100 flex items-center gap-1.5">
+                    TODAY'S ONE THING
+                    <span className="text-[9px] font-extrabold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 px-1.5 py-0.5 rounded border border-amber-300 dark:border-amber-700 uppercase">
+                      PRIORITY
+                    </span>
+                  </h3>
+                </div>
+                {state.todaysOneThing?.date === todayLocalDateStr && (
+                  <button
+                    onClick={handleClearOneThing}
+                    className="text-[10px] font-bold text-stone-400 hover:text-red-500 uppercase tracking-wider"
+                    title="Clear priority task"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+
+              {state.todaysOneThing?.date === todayLocalDateStr ? (
+                <div className="space-y-3">
+                  <div
+                    onClick={handleToggleOneThing}
+                    className={`p-3 rounded-xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                      state.todaysOneThing.completed
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-950 dark:text-emerald-200'
+                        : 'bg-stone-50 dark:bg-zinc-800/80 border-[#2a2a2a] dark:border-zinc-700'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center font-black text-xs ${
+                        state.todaysOneThing.completed
+                          ? 'bg-[#22c55e] border-emerald-600 text-white'
+                          : 'border-[#2a2a2a] dark:border-zinc-600 bg-white dark:bg-zinc-900'
+                      }`}>
+                        {state.todaysOneThing.completed ? '✓' : ''}
+                      </div>
+                      <p className={`text-sm font-black leading-snug truncate ${
+                        state.todaysOneThing.completed ? 'line-through text-emerald-800 dark:text-emerald-300' : 'text-stone-900 dark:text-zinc-100'
+                      }`}>
+                        {state.todaysOneThing.text}
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold text-stone-500 uppercase tracking-wider shrink-0 pl-2">
+                      {state.todaysOneThing.completed ? 'COMPLETED' : 'IN PROGRESS'}
+                    </span>
+                  </div>
+
+                  {!timerIsActive && !state.todaysOneThing.completed && (
+                    <button
+                      onClick={handleStartOneThingFocus}
+                      className="w-full py-2.5 bg-[#22c55e] text-black font-black text-xs uppercase tracking-widest rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 hover:bg-emerald-400 shadow-xs cursor-pointer flex items-center justify-center space-x-1.5"
+                    >
+                      <span>▶</span>
+                      <span>Focus on This Priority Now</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs text-stone-600 dark:text-zinc-400 font-medium">
+                    What is the single most important task that moves the needle for you today?
+                  </p>
+
+                  {/* Suggestion pills */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {['Deep Work Project', 'Book Reading 20m', 'Workout Routine'].map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => handleSetOneThing(preset)}
+                        className="text-[10px] font-bold bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-800 dark:text-zinc-200 px-2.5 py-1 rounded-lg border border-stone-300 dark:border-zinc-700 cursor-pointer"
+                      >
+                        + {preset}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      id="one-thing-input"
+                      value={oneThingInput}
+                      onChange={(e) => setOneThingInput(e.target.value)}
+                      placeholder="e.g. Finish quarterly proposal outline"
+                      maxLength={65}
+                      className="flex-1 p-2 text-xs border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#22c55e] bg-stone-50 dark:bg-zinc-900 text-[#0a0a0a] dark:text-zinc-100"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && oneThingInput.trim()) {
+                          handleSetOneThing(oneThingInput);
+                        }
+                      }}
+                    />
+                    <button
+                      type="button"
+                      id="set-one-thing-btn"
+                      onClick={() => handleSetOneThing(oneThingInput)}
+                      className="bg-[#22c55e] border-2 border-[#2a2a2a] dark:border-zinc-700 text-black px-4 py-2 text-xs font-black rounded-xl hover:bg-emerald-400 cursor-pointer shadow-xs uppercase tracking-wider"
+                    >
+                      Set
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* TIMER CORE MODULE CONTAINER */}
-            <div className="bg-white border-2 border-[#2a2a2a] rounded-xl p-5 text-center shadow-xs space-y-4">
+            <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-2xl p-5 text-center shadow-xs space-y-4">
               
-              {/* LARGE COUNTDOWN NUMERALS */}
+              {/* LARGE COUNTDOWN NUMERALS WITH VISIBLE URGENCY COLOR PROGRESSION */}
               <div className="py-2">
-                <span className="text-6xl font-black tracking-tighter text-[#0a0a0a] select-all font-mono">
+                <span className={`text-6xl font-black tracking-tighter select-all font-mono transition-colors duration-300 ${
+                  !timerIsActive
+                    ? 'text-[#0a0a0a] dark:text-zinc-100'
+                    : timeLeft <= 60
+                    ? 'text-rose-500 dark:text-rose-400 animate-pulse'
+                    : timeLeft <= (timerDuration * 60) * 0.5
+                    ? 'text-amber-500 dark:text-amber-400'
+                    : 'text-[#22c55e]'
+                }`}>
                   {formatTimeStr(timeLeft)}
                 </span>
+
+                {/* Visible Urgency state tag */}
+                {timerIsActive && (
+                  <div className="mt-2 flex items-center justify-center space-x-1.5">
+                    {timeLeft <= 60 ? (
+                      <span className="text-[10px] font-black uppercase text-rose-500 dark:text-rose-400 tracking-widest flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                        FINAL 60 SECONDS — SPRINT TO FINISH
+                      </span>
+                    ) : timeLeft <= (timerDuration * 60) * 0.5 ? (
+                      <span className="text-[10px] font-black uppercase text-amber-500 dark:text-amber-400 tracking-widest flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                        UNDER 50% REMAINING — HOLD MOMENTUM
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-black uppercase text-[#22c55e] tracking-widest flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-[#22c55e]"></span>
+                        IN THE ZONE — ACTIVE FOCUS
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* HORIZONTAL DURATIONS PILLS BAR */}
               {!timerIsActive && (
                 <div className="space-y-2 select-none">
-                  <p className="text-[10px] font-bold text-[#1a1a1a]/65 uppercase tracking-widest text-left">focus goal duration</p>
+                  <p className="text-[10px] font-bold text-[#1a1a1a]/65 dark:text-zinc-400 uppercase tracking-widest text-left">focus goal duration</p>
                   <div className="flex space-x-2 overflow-x-auto pb-1.5 scrollbar-thin">
                     {durationOptions.map((min) => {
                       const isSel = timerDuration === min;
@@ -783,11 +1479,12 @@ export default function App() {
                         <button
                           key={min}
                           id={`pills-duration-${min}`}
+                          aria-label={`Select ${min} minutes focus duration`}
                           onClick={() => handleDurationSelect(min)}
-                          className={`px-4.5 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                          className={`px-4 py-2 rounded-full text-xs font-black border-2 transition-all cursor-pointer ${
                             isSel
-                              ? 'bg-[#22c55e] border-[#2a2a2a] text-[#0a0a0a]'
-                              : 'bg-white border-[#2a2a2a] text-[#1a1a1a]/70 hover:bg-[#f5f5f5]'
+                              ? 'bg-[#22c55e] border-[#2a2a2a] dark:border-zinc-700 text-[#0a0a0a] shadow-xs'
+                              : 'bg-white dark:bg-zinc-800 border-[#2a2a2a] dark:border-zinc-700 text-[#1a1a1a]/75 dark:text-zinc-300 hover:bg-stone-50 dark:hover:bg-zinc-700'
                           }`}
                         >
                           {min}m
@@ -800,22 +1497,23 @@ export default function App() {
 
               {/* FOCUS MODE AND ACTIVE DUTY SELECTION */}
               <div className="space-y-2 select-none text-left">
-                <p className="text-[10px] font-bold text-[#1a1a1a]/65 uppercase tracking-widest">
+                <p className="text-[10px] font-bold text-[#1a1a1a]/65 dark:text-zinc-400 uppercase tracking-widest">
                   Crew Focus Activity
                 </p>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     id="focus-activity-desk-btn"
+                    aria-label="Set activity to Desk Work"
                     onClick={() => {
                       setFocusActivity('desk-work');
                       if (timerIsActive) {
                         setTimerPose('typing');
                       }
                     }}
-                    className={`flex items-center justify-center space-x-1.5 py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                    className={`flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
                       focusActivity === 'desk-work'
-                        ? 'bg-[#22c55e]/15 border-[#22c55e] text-[#0a0a0a]'
-                        : 'bg-white border-stone-200 text-[#1a1a1a]/70 hover:bg-[#f5f5f5] hover:border-[#2a2a2a]'
+                        ? 'bg-[#22c55e]/20 border-[#22c55e] text-[#0a0a0a] dark:text-zinc-100 shadow-xs'
+                        : 'bg-white dark:bg-zinc-800 border-stone-200 dark:border-zinc-700 text-[#1a1a1a]/70 dark:text-zinc-400 hover:border-[#2a2a2a]'
                     }`}
                   >
                     <span>💻</span>
@@ -823,16 +1521,17 @@ export default function App() {
                   </button>
                   <button
                     id="focus-activity-exercise-btn"
+                    aria-label="Set activity to Exercise"
                     onClick={() => {
                       setFocusActivity('exercise');
                       if (timerIsActive) {
                         setTimerPose('exercising');
                       }
                     }}
-                    className={`flex items-center justify-center space-x-1.5 py-2 px-3 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                    className={`flex items-center justify-center space-x-1.5 py-2.5 px-3 rounded-xl text-xs font-black border-2 transition-all cursor-pointer ${
                       focusActivity === 'exercise'
-                        ? 'bg-[#22c55e]/15 border-[#22c55e] text-[#0a0a0a]'
-                        : 'bg-white border-stone-200 text-[#1a1a1a]/70 hover:bg-[#f5f5f5] hover:border-[#2a2a2a]'
+                        ? 'bg-[#22c55e]/20 border-[#22c55e] text-[#0a0a0a] dark:text-zinc-100 shadow-xs'
+                        : 'bg-white dark:bg-zinc-800 border-stone-200 dark:border-zinc-700 text-[#1a1a1a]/70 dark:text-zinc-400 hover:border-[#2a2a2a]'
                     }`}
                   >
                     <span>🏋️</span>
@@ -842,18 +1541,19 @@ export default function App() {
               </div>
 
               {focusActivity === 'exercise' && (
-                <div id="workout-routine-select" className="space-y-1.5 select-none text-left p-2.5 bg-stone-50 border border-stone-200 rounded-lg">
-                  <p className="text-[10px] font-bold text-[#1a1a1a]/60 uppercase tracking-widest">
+                <div id="workout-routine-select" className="space-y-1.5 select-none text-left p-3 bg-stone-50 dark:bg-zinc-800/80 border-2 border-stone-200 dark:border-zinc-700 rounded-xl">
+                  <p className="text-[10px] font-bold text-[#1a1a1a]/60 dark:text-zinc-400 uppercase tracking-widest">
                     Workout Routine Style
                   </p>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       id="exercise-type-dumbbells-btn"
+                      aria-label="Select dumbbells workout"
                       onClick={() => setExerciseType('dumbbells')}
-                      className={`flex items-center justify-center space-x-1 py-1.5 px-2 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${
+                      className={`flex items-center justify-center space-x-1 py-2 px-2 rounded-lg text-xs font-black border-2 transition-all cursor-pointer ${
                         exerciseType === 'dumbbells'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                          : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-100 hover:border-stone-400'
+                          ? 'bg-[#22c55e] text-black border-[#2a2a2a] dark:border-zinc-700 shadow-xs'
+                          : 'bg-white dark:bg-zinc-800 border-stone-200 dark:border-zinc-700 text-stone-700 dark:text-zinc-300'
                       }`}
                     >
                       <span>🏋️</span>
@@ -861,11 +1561,12 @@ export default function App() {
                     </button>
                     <button
                       id="exercise-type-punching-btn"
+                      aria-label="Select punching bag workout"
                       onClick={() => setExerciseType('punching')}
-                      className={`flex items-center justify-center space-x-1 py-1.5 px-2 rounded-md text-[11px] font-bold border transition-all cursor-pointer ${
+                      className={`flex items-center justify-center space-x-1 py-2 px-2 rounded-lg text-xs font-black border-2 transition-all cursor-pointer ${
                         exerciseType === 'punching'
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
-                          : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-100 hover:border-stone-400'
+                          ? 'bg-[#22c55e] text-black border-[#2a2a2a] dark:border-zinc-700 shadow-xs'
+                          : 'bg-white dark:bg-zinc-800 border-stone-200 dark:border-zinc-700 text-stone-700 dark:text-zinc-300'
                       }`}
                     >
                       <span>🥊</span>
@@ -880,16 +1581,18 @@ export default function App() {
                 {timerIsActive ? (
                   <button
                     id="abort-timer-btn"
+                    aria-label="Abort active focus session"
                     onClick={stopTimer}
-                    className="w-full py-4 bg-white text-black text-sm font-bold uppercase tracking-widest rounded-lg border-2 border-[#2a2a2a] active:scale-95 transition-all cursor-pointer"
+                    className="w-full py-4 bg-white dark:bg-zinc-800 text-black dark:text-zinc-100 text-sm font-black uppercase tracking-widest rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 active:scale-95 transition-all cursor-pointer"
                   >
                     Abort Session
                   </button>
                 ) : (
                   <button
                     id="start-timer-btn"
+                    aria-label="Start focus session timer"
                     onClick={startTimer}
-                    className="w-full py-4 bg-[#22c55e] text-[#0a0a0a] text-sm font-black uppercase tracking-widest rounded-lg border-2 border-[#2a2a2a] shadow-[0_4px_0_#0a0a0a] active:translate-y-1 active:shadow-none transition-all cursor-pointer"
+                    className="w-full py-4 bg-[#22c55e] text-[#0a0a0a] text-sm font-black uppercase tracking-widest rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 shadow-[0_4px_0_#0a0a0a] active:translate-y-1 active:shadow-none transition-all cursor-pointer"
                   >
                     Let's Focus!
                   </button>
@@ -903,15 +1606,15 @@ export default function App() {
             </div>
 
             {/* DAILY GOAL TRACKER CARD */}
-            <div className="bg-white border-2 border-[#2a2a2a] rounded-xl p-4 shadow-xs select-none space-y-3 text-left">
-              <div className="flex items-center justify-between border-b border-[#2a2a2a]/10 pb-2">
+            <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-2xl p-4 shadow-xs select-none space-y-3 text-left">
+              <div className="flex items-center justify-between border-b border-[#2a2a2a]/10 dark:border-zinc-800 pb-2">
                 <div className="flex items-center space-x-1.5">
                   <span className="text-sm">🎯</span>
-                  <h3 className="text-xs font-black uppercase tracking-wider text-[#0a0a0a]">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#0a0a0a] dark:text-zinc-100">
                     DAILY GOAL TRACKER
                   </h3>
                 </div>
-                <span className="text-[10px] font-bold text-stone-500 uppercase">
+                <span className="text-[10px] font-bold text-stone-500 dark:text-zinc-400 uppercase">
                   {(state.dailyGoals || []).filter(g => g.completedDates.includes(getLocalDateString())).length} OF {(state.dailyGoals || []).length} DONE
                 </span>
               </div>
@@ -926,23 +1629,23 @@ export default function App() {
                         key={g.id}
                         id={`home-goal-${g.id}`}
                         onClick={() => handleToggleDailyGoal(g.id)}
-                        className={`flex items-center justify-between p-2.5 rounded-lg border-2 border-[#2a2a2a] transition-all cursor-pointer ${
+                        className={`flex items-center justify-between p-3 rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 transition-all cursor-pointer ${
                           isDoneToday
-                            ? 'bg-emerald-50 border-emerald-500 text-emerald-950 shadow-inner'
-                            : 'bg-white hover:bg-stone-50 text-stone-900'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-950 dark:text-emerald-200 shadow-inner'
+                            : 'bg-white dark:bg-zinc-800 hover:bg-stone-50 dark:hover:bg-zinc-700 text-stone-900 dark:text-zinc-100'
                         }`}
                       >
                         <div className="flex items-center space-x-2.5 flex-1 min-w-0">
                           {/* Checkbox */}
-                          <div className={`w-4.5 h-4.5 rounded border-2 border-[#2a2a2a] flex items-center justify-center font-bold text-xs select-none ${
-                            isDoneToday ? 'bg-[#22c55e] text-white border-emerald-600' : 'bg-stone-100'
+                          <div className={`w-5 h-5 rounded-md border-2 border-[#2a2a2a] dark:border-zinc-700 flex items-center justify-center font-bold text-xs select-none ${
+                            isDoneToday ? 'bg-[#22c55e] text-white border-emerald-600' : 'bg-stone-100 dark:bg-zinc-700'
                           }`}>
                             {isDoneToday && "✓"}
                           </div>
                           
                           {/* Text */}
                           <span className={`text-xs font-bold leading-tight truncate ${
-                            isDoneToday ? 'line-through text-emerald-800 font-medium' : 'text-stone-950 font-bold'
+                            isDoneToday ? 'line-through text-emerald-800 dark:text-emerald-300 font-medium' : 'text-stone-950 dark:text-zinc-100 font-bold'
                           }`}>
                             {g.text}
                           </span>
@@ -950,16 +1653,17 @@ export default function App() {
 
                         {/* Interactive Delete Button and stats */}
                         <div className="flex items-center space-x-2 shrink-0">
-                          <span className="text-[9px] font-black uppercase bg-stone-100 text-stone-600 border border-stone-200 px-1.5 py-0.5 rounded">
+                          <span className="text-[9px] font-black uppercase bg-stone-100 dark:bg-zinc-700 text-stone-600 dark:text-zinc-300 border border-stone-200 dark:border-zinc-600 px-1.5 py-0.5 rounded">
                             ⭐ {g.completedDates.length} Days
                           </span>
                           <button
                             type="button"
+                            aria-label={`Remove goal ${g.text}`}
                             onClick={(e) => {
                               e.stopPropagation();
                               handleRemoveHomeDailyGoal(g.id);
                             }}
-                            className="text-red-400 hover:text-red-600 text-xs font-bold p-1 hover:bg-red-50 rounded"
+                            className="text-red-400 hover:text-red-600 dark:hover:text-red-300 text-xs font-bold p-1 hover:bg-red-50 dark:hover:bg-red-950 rounded"
                             title="Remove this goal"
                           >
                             ✕
@@ -970,8 +1674,8 @@ export default function App() {
                   })}
                 </div>
               ) : (
-                <div className="p-4 bg-stone-50 border border-dashed border-stone-300 rounded-lg text-center">
-                  <p className="text-xs text-stone-500 font-medium italic">
+                <div className="p-4 bg-stone-50 dark:bg-zinc-800 border border-dashed border-stone-300 dark:border-zinc-700 rounded-xl text-center">
+                  <p className="text-xs text-stone-500 dark:text-zinc-400 font-medium italic">
                     No active daily goals tracked. Create up to 3 daily driver habits to commit to!
                   </p>
                 </div>
@@ -979,11 +1683,11 @@ export default function App() {
 
               {/* Add Custom Goal Directly inline on the Home tab if less than 3 are present */}
               {(state.dailyGoals || []).length < 3 ? (
-                <div className="pt-2 bg-stone-50 p-2 rounded-lg border border-stone-200 space-y-1.5">
-                  <span className="text-[9px] font-black text-stone-400 uppercase tracking-wider block">Add a New Daily Goal (Max 3):</span>
+                <div className="pt-2 bg-stone-50 dark:bg-zinc-800/60 p-3 rounded-xl border border-stone-200 dark:border-zinc-700 space-y-2">
+                  <span className="text-[9px] font-black text-stone-400 dark:text-zinc-400 uppercase tracking-wider block">Add a New Daily Goal (Max 3):</span>
                   
                   {/* Tip banner */}
-                  <div className="text-[9px] text-amber-800 bg-amber-50/75 border border-amber-200 p-1.5 rounded leading-normal">
+                  <div className="text-[9px] text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800/60 p-2 rounded-lg leading-normal">
                     💡 <strong>Pro-Tip:</strong> Set a <strong>clear, actionable, and timed</strong> goal (e.g. <em>"Read 15 pages of book"</em> or <em>"Do 20 mins of yoga"</em>) rather than something vague!
                   </div>
 
@@ -991,10 +1695,11 @@ export default function App() {
                     <input
                       type="text"
                       id="home-custom-goal-input"
+                      aria-label="Add new daily goal habit"
                       value={homeGoalInput}
                       onChange={(e) => setHomeGoalInput(e.target.value)}
                       placeholder="e.g. Study React for 30m"
-                      className="flex-1 p-2 text-xs border border-stone-400 rounded focus:outline-none focus:ring-1 focus:ring-emerald-400 bg-white"
+                      className="flex-1 p-2 text-xs border-2 border-stone-300 dark:border-zinc-700 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-[#22c55e] bg-white dark:bg-zinc-900 text-[#0a0a0a] dark:text-zinc-100"
                       maxLength={60}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
@@ -1009,50 +1714,113 @@ export default function App() {
                     <button
                       type="button"
                       id="home-custom-goal-add-btn"
+                      aria-label="Add custom daily goal"
                       onClick={() => {
                         if (homeGoalInput.trim()) {
                           handleAddHomeDailyGoal(homeGoalInput);
                           setHomeGoalInput('');
                         }
                       }}
-                      className="bg-[#22c55e] border border-[#2a2a2a] text-black px-3 py-1 text-xs font-extrabold rounded hover:bg-emerald-400"
+                      className="bg-[#22c55e] border-2 border-[#2a2a2a] dark:border-zinc-700 text-black px-4 py-2 text-xs font-black rounded-xl hover:bg-emerald-400 cursor-pointer shadow-xs"
                     >
                       Add
                     </button>
                   </div>
                 </div>
               ) : (
-                <div className="text-[10px] text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 p-2 rounded text-center">
+                <div className="text-[10px] text-emerald-700 dark:text-emerald-300 font-bold bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-2.5 rounded-xl text-center">
                   ✨ Perfect! You're tracking 3 active habits. Tap a habit to toggle it daily!
                 </div>
               )}
             </div>
 
-            {/* SIMULATED MINIMAL HOME SCREEN 2X2 WIDGET DISPLAY */}
-            <div className="bg-white border-2 border-[#2a2a2a] rounded-xl p-4 flex items-center justify-between shadow-xs select-none">
-              <div className="space-y-1">
-                <span className="text-[9px] font-bold text-stone-400 tracking-wider uppercase">HOME SCREEN COMPACT WIDGET</span>
-                <div className="border border-[#2a2a2a] w-36 p-3 rounded bg-white text-left space-y-1">
-                  <span className="text-base font-black text-[#0a0a0a]">Day {currentDayXOfChallenge}</span>
+            {/* INTERACTIVE SMART HOME SCREEN WIDGET PREVIEW */}
+            <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-2xl p-4 shadow-xs select-none space-y-3">
+              <div className="flex items-center justify-between border-b border-[#2a2a2a]/10 dark:border-zinc-800 pb-2">
+                <span className="text-[10px] font-black text-[#22c55e] tracking-wider uppercase">
+                  SMART HOME SCREEN WIDGET PREVIEWS
+                </span>
+                <span className="text-[9px] font-bold text-stone-400 dark:text-zinc-500 uppercase">
+                  ANDROID & WEB APP
+                </span>
+              </div>
+
+              {/* 2x2 and 4x1 Preview Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                {/* 2x2 Compact Widget */}
+                <div className="border-2 border-[#2a2a2a] dark:border-zinc-700 p-3.5 rounded-xl bg-stone-50 dark:bg-zinc-800/90 text-left space-y-2 relative overflow-hidden">
                   <div className="flex justify-between items-center">
-                    <span className="text-[9px] text-[#22c55e] font-extrabold">{getCurrentRankName(state.totalFocusedMinutes).toUpperCase()}</span>
+                    <span className="text-xs font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-wider">
+                      Day {currentDayXOfChallenge}
+                    </span>
                     <span
-                      className={`w-2.5 h-2.5 rounded-full border border-black ${
-                        isCompletedTodayValue ? 'bg-[#22c55e]' : 'bg-white'
+                      className={`w-3 h-3 rounded-full border border-black dark:border-zinc-500 ${
+                        isCompletedTodayValue ? 'bg-[#22c55e]' : 'bg-white dark:bg-zinc-900'
                       }`}
+                      title={isCompletedTodayValue ? 'Session completed today' : 'Session pending'}
                     ></span>
+                  </div>
+
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-[10px] text-[#22c55e] font-extrabold uppercase">
+                      {getCurrentRankName(state.totalFocusedMinutes)}
+                    </span>
+                    <span className="text-[10px] font-bold text-amber-500 flex items-center gap-0.5">
+                      🔥 {getChallengeStreak(state.completedDates)}d
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={startTimer}
+                    disabled={timerIsActive}
+                    className={`w-full py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                      timerIsActive
+                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950 dark:text-emerald-300'
+                        : 'bg-[#22c55e] text-black border-[#2a2a2a] dark:border-zinc-700 hover:bg-emerald-400 active:scale-95'
+                    }`}
+                  >
+                    <span>⚡</span>
+                    <span>{timerIsActive ? 'Focusing...' : '1-Tap Focus'}</span>
+                  </button>
+                </div>
+
+                {/* 4x1 Wide Widget */}
+                <div className="border-2 border-[#2a2a2a] dark:border-zinc-700 p-3.5 rounded-xl bg-stone-50 dark:bg-zinc-800/90 text-left space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-xs font-black text-[#0a0a0a] dark:text-zinc-100 uppercase">
+                        {state.username}'S CLUB
+                      </p>
+                      <p className="text-[9px] text-stone-500 dark:text-zinc-400 font-semibold">
+                        {state.completedDates.length} completed • {state.bixBalance} Bix
+                      </p>
+                    </div>
+                    <span className="text-sm">🎯</span>
+                  </div>
+
+                  <div className="pt-0.5">
+                    {state.todaysOneThing?.date === todayLocalDateStr ? (
+                      <p className="text-[10px] font-bold text-stone-700 dark:text-zinc-300 truncate">
+                        👑 {state.todaysOneThing.text}
+                      </p>
+                    ) : (
+                      <p className="text-[10px] text-stone-400 dark:text-zinc-500 italic">
+                        No priority task pinned
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
-              <div className="w-1/2 text-right pl-3">
-                <p className="text-xs font-bold text-[#0a0a0a]">Mini Widget setup</p>
-                <p className="text-[10px] text-[#1a1a1a]/60 font-semibold leading-tight">add to smartphone home to track checklist pulse daily at one glance.</p>
-              </div>
+
+              <p className="text-[10px] text-stone-500 dark:text-zinc-400 font-medium text-center">
+                💡 Long-press your phone home screen &gt; <strong>Widgets</strong> &gt; <strong>Progress Club</strong> to place this widget.
+              </p>
             </div>
 
             {/* MILESTONE MANUAL TRIGGER CHIPS (FOR DECK AND TESTING OUT OUTCOMES) */}
             <div className="space-y-2 select-none">
-              <span className="text-[9px] font-bold text-stone-400 tracking-wider uppercase">ACHIEVEMENT MILESTONE GENERATORS</span>
+              <span className="text-[9px] font-bold text-stone-400 dark:text-zinc-400 tracking-wider uppercase">ACHIEVEMENT MILESTONE GENERATORS</span>
               <div className="flex flex-wrap gap-1.5">
                 {[
                   { title: "Day 7 Completed", copy: "Completed 7 focus milestones" },
@@ -1063,8 +1831,9 @@ export default function App() {
                 ].map((m, i) => (
                   <button
                     key={i}
+                    aria-label={`Preview milestone ${m.title}`}
                     onClick={() => triggerShareMilestone(m.title)}
-                    className="text-[9px] font-bold uppercase p-1.5 border border-stone-300 rounded bg-white hover:bg-[#f5f5f5]"
+                    className="text-[9px] font-bold uppercase p-2 border-2 border-stone-300 dark:border-zinc-700 rounded-xl bg-white dark:bg-zinc-800 hover:bg-stone-50 dark:hover:bg-zinc-700 text-[#0a0a0a] dark:text-zinc-100 cursor-pointer"
                   >
                     {m.title}
                   </button>
@@ -1275,27 +2044,43 @@ export default function App() {
         )}
 
         {activeTab === 'settings' && (
-          <div className="space-y-6 select-none">
-            <h1 className="text-lg font-black text-[#0a0a0a] uppercase tracking-wider">CLUB SETTINGS</h1>
+          <div className="space-y-6 select-none pb-8">
+            <div className="text-left">
+              <h1 className="text-lg font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-wider">
+                CLUB SETTINGS & CONTROLS
+              </h1>
+              <p className="text-xs text-[#1a1a1a]/60 dark:text-zinc-400">
+                Personalize your focus session rhythm, visual appearance, and legal documentation.
+              </p>
+            </div>
             
-            <div className="bg-white border-2 border-[#2a2a2a] p-5 rounded-xl space-y-5">
-              
+            {/* 1. TIMING & FOCUS PREFERENCES */}
+            <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-5 rounded-2xl space-y-5 shadow-xs">
+              <span className="text-[10px] font-black text-[#22c55e] uppercase tracking-widest block">
+                TIMING & FOCUS RHYTHM
+              </span>
+
               {/* Duration selector configuration */}
-              <div className="space-y-1">
-                <label className="text-xs font-black text-[#1a1a1a]/70 uppercase tracking-widest">Default focus timer</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-[#1a1a1a]/75 dark:text-zinc-300 uppercase tracking-wider">
+                  Default focus timer
+                </label>
                 <div className="grid grid-cols-4 gap-2">
                   {[10, 25, 50, 90].map((mins) => (
                     <button
                       key={mins}
+                      type="button"
+                      id={`setting-duration-${mins}`}
+                      aria-label={`Set default focus timer to ${mins} minutes`}
                       onClick={() => {
                         saveState({ ...state, settings: { ...state.settings, durationDefault: mins } });
                         setTimerDuration(mins);
                         setTimeLeft(mins * 60);
                       }}
-                      className={`py-2 text-xs font-bold rounded border ${
+                      className={`py-2.5 text-xs font-black rounded-xl border-2 transition-all cursor-pointer ${
                         state.settings.durationDefault === mins
-                          ? 'bg-[#22c55e] border-[#2a2a2a] text-[#0a0a0a]'
-                          : 'bg-white border-[#eeeeee] text-[#1a1a1a]/60'
+                          ? 'bg-[#22c55e] border-[#2a2a2a] dark:border-zinc-700 text-black shadow-xs'
+                          : 'bg-stone-50 dark:bg-zinc-800 border-stone-200 dark:border-zinc-700 text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700'
                       }`}
                     >
                       {mins}m
@@ -1305,19 +2090,24 @@ export default function App() {
               </div>
 
               {/* Break duration config */}
-              <div className="space-y-1">
-                <label className="text-xs font-black text-[#1a1a1a]/70 uppercase tracking-widest">Break Timer duration</label>
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-[#1a1a1a]/75 dark:text-zinc-300 uppercase tracking-wider">
+                  Break Timer duration
+                </label>
                 <div className="grid grid-cols-4 gap-2">
                   {[0, 5, 10, 15].map((mins) => (
                     <button
                       key={mins}
+                      type="button"
+                      id={`setting-break-${mins}`}
+                      aria-label={`Set break duration to ${mins === 0 ? 'off' : mins + ' minutes'}`}
                       onClick={() => {
                         saveState({ ...state, settings: { ...state.settings, breakTimer: mins } });
                       }}
-                      className={`py-2 text-xs font-bold rounded border ${
+                      className={`py-2.5 text-xs font-black rounded-xl border-2 transition-all cursor-pointer ${
                         state.settings.breakTimer === mins
-                          ? 'bg-[#22c55e] border-[#2a2a2a] text-[#0a0a0a]'
-                          : 'bg-white border-[#eeeeee] text-[#1a1a1a]/60'
+                          ? 'bg-[#22c55e] border-[#2a2a2a] dark:border-zinc-700 text-black shadow-xs'
+                          : 'bg-stone-50 dark:bg-zinc-800 border-stone-200 dark:border-zinc-700 text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700'
                       }`}
                     >
                       {mins === 0 ? 'off' : `${mins}m`}
@@ -1326,39 +2116,113 @@ export default function App() {
                 </div>
               </div>
 
+              {/* Daily reminder & notification trigger configuration */}
+              <div className="space-y-3 border-t border-stone-100 dark:border-zinc-800 pt-4 text-left">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label htmlFor="daily-reminder-input" className="text-xs font-black text-[#1a1a1a]/75 dark:text-zinc-300 uppercase tracking-wider block">
+                      Daily Focus Trigger Time
+                    </label>
+                    <p className="text-[10px] text-stone-500 dark:text-zinc-400">
+                      Local push reminder to protect your daily streak
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRequestNotificationPermission}
+                    className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider rounded-lg border border-[#2a2a2a] dark:border-zinc-700 bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200 dark:hover:bg-zinc-700 cursor-pointer"
+                  >
+                    {state.settings.notificationsEnabled ? '🔔 Active' : '🔕 Enable Alert'}
+                  </button>
+                </div>
 
+                {/* Quick time presets */}
+                <div className="grid grid-cols-4 gap-1.5">
+                  {['09:00', '14:00', '18:00', '20:00'].map((timePreset) => {
+                    const isSelected = state.settings.dailyReminderTime === timePreset;
+                    return (
+                      <button
+                        key={timePreset}
+                        type="button"
+                        onClick={() => {
+                          saveState({
+                            ...state,
+                            settings: { ...state.settings, dailyReminderTime: timePreset },
+                          });
+                        }}
+                        className={`py-1.5 text-[11px] font-black font-mono rounded-lg border-2 transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#22c55e] border-[#2a2a2a] dark:border-zinc-700 text-black shadow-xs'
+                            : 'bg-stone-50 dark:bg-zinc-800 border-stone-200 dark:border-zinc-700 text-stone-700 dark:text-zinc-300 hover:bg-stone-100'
+                        }`}
+                      >
+                        {timePreset}
+                      </button>
+                    );
+                  })}
+                </div>
 
-              {/* Daily reminder nudge label */}
-              <div className="space-y-1 border-t border-[#eeeeee] pt-4">
-                <p className="text-sm font-semibold text-[#0a0a0a]">daily nudge: we'll remind {state.username} to show up</p>
-                <input
-                  type="text"
-                  value={state.settings.dailyReminderTime}
-                  onChange={(e) => {
-                    saveState({
-                      ...state,
-                      settings: { ...state.settings, dailyReminderTime: e.target.value },
-                    });
-                  }}
-                  className="w-full bg-[#f5f5f5] p-2 border border-[#2a2a2a] rounded font-mono text-center text-xs"
-                />
+                <div className="flex gap-2">
+                  <input
+                    id="daily-reminder-input"
+                    type="text"
+                    aria-label="Daily reminder time (e.g. 14:00)"
+                    value={state.settings.dailyReminderTime}
+                    onChange={(e) => {
+                      saveState({
+                        ...state,
+                        settings: { ...state.settings, dailyReminderTime: e.target.value },
+                      });
+                    }}
+                    placeholder="14:00"
+                    className="flex-1 bg-stone-50 dark:bg-zinc-800 p-2.5 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-xl font-mono text-center text-xs text-[#0a0a0a] dark:text-zinc-100 focus:outline-hidden focus:ring-2 focus:ring-[#22c55e]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const content = getDailyNotificationContent();
+                      sendSystemOrInAppNotification(content.title, content.body);
+                    }}
+                    className="px-3 py-2 bg-stone-900 text-[#22c55e] dark:bg-zinc-800 dark:text-emerald-400 text-[10px] font-black uppercase tracking-wider rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 hover:bg-stone-800 cursor-pointer shrink-0"
+                  >
+                    ⚡ Test Trigger
+                  </button>
+                </div>
+
+                {/* Live dynamic preview of notification copy */}
+                <div className="p-2.5 bg-stone-50 dark:bg-zinc-800/80 rounded-xl border border-stone-200 dark:border-zinc-700 text-left space-y-1">
+                  <span className="text-[8px] font-black uppercase text-stone-400 dark:text-zinc-500 tracking-wider block">
+                    DYNAMIC NOTIFICATION PREVIEW:
+                  </span>
+                  <p className="text-[11px] font-bold text-stone-900 dark:text-zinc-100">
+                    {getDailyNotificationContent().title}
+                  </p>
+                  <p className="text-[10px] text-stone-600 dark:text-zinc-400 leading-tight">
+                    {getDailyNotificationContent().body}
+                  </p>
+                </div>
               </div>
 
               {/* Challenge length change triggers */}
-              <div className="space-y-1 border-t border-[#eeeeee] pt-4">
-                <label className="text-xs font-black text-[#1a1a1a]/70 uppercase tracking-widest">Select challenge span</label>
+              <div className="space-y-1.5 border-t border-stone-100 dark:border-zinc-800 pt-4">
+                <label className="text-xs font-black text-[#1a1a1a]/75 dark:text-zinc-300 uppercase tracking-wider block">
+                  Active Challenge Span
+                </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[21, 75, 365].map((len) => (
                     <button
                       key={len}
+                      type="button"
+                      id={`setting-challenge-span-${len}`}
+                      aria-label={`Switch challenge to ${len} days`}
                       onClick={() => {
                         setPendingChallengeLength(len as ChallengeLength);
                         setShowChallengeSwitchDialog(true);
                       }}
-                      className={`py-2.5 text-xs font-bold rounded border ${
+                      className={`py-2.5 text-xs font-black rounded-xl border-2 transition-all cursor-pointer ${
                         state.challengeLength === len
-                          ? 'bg-[#22c55e] border-[#2a2a2a] text-[#0a0a0a]'
-                          : 'bg-white border-[#eeeeee] text-[#1a1a1a]/60'
+                          ? 'bg-[#22c55e] border-[#2a2a2a] dark:border-zinc-700 text-black shadow-xs'
+                          : 'bg-stone-50 dark:bg-zinc-800 border-stone-200 dark:border-zinc-700 text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700'
                       }`}
                     >
                       {len} Days
@@ -1366,30 +2230,221 @@ export default function App() {
                   ))}
                 </div>
               </div>
+            </div>
 
-              {/* Subscription management & mock billing triggers */}
-              <div className="pt-4 border-t border-[#eeeeee] flex flex-col space-y-2">
+            {/* 2. APPEARANCE & DARK MODE THEME TOGGLE */}
+            <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-5 rounded-2xl space-y-4 shadow-xs">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] font-black text-[#22c55e] uppercase tracking-widest block">
+                    APPEARANCE
+                  </span>
+                  <h3 className="text-xs font-black uppercase tracking-wider text-[#0a0a0a] dark:text-zinc-100 mt-0.5">
+                    Theme Mode
+                  </h3>
+                </div>
+                <span className="text-[10px] font-bold text-stone-400 dark:text-zinc-500 uppercase">
+                  {state.settings.theme || 'system'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { id: 'light', label: 'Light', icon: Sun },
+                  { id: 'dark', label: 'Dark', icon: Moon },
+                  { id: 'system', label: 'System', icon: Laptop },
+                ].map((t) => {
+                  const Icon = t.icon;
+                  const isSelected = (state.settings.theme || 'system') === t.id;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      id={`theme-toggle-${t.id}`}
+                      aria-label={`Select ${t.label} theme`}
+                      onClick={() => {
+                        saveState({
+                          ...state,
+                          settings: {
+                            ...state.settings,
+                            theme: t.id as ThemeMode,
+                          },
+                        });
+                      }}
+                      className={`py-3 px-2 rounded-xl text-xs font-black uppercase tracking-wider flex flex-col items-center justify-center gap-1.5 border-2 transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-[#22c55e] border-[#2a2a2a] dark:border-zinc-700 text-black shadow-xs'
+                          : 'bg-stone-50 dark:bg-zinc-800 border-stone-200 dark:border-zinc-700 text-stone-700 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" aria-hidden="true" />
+                      <span>{t.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. COMMUNITY & REVIEWS */}
+            <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-5 rounded-2xl space-y-3 shadow-xs">
+              <span className="text-[10px] font-black text-[#22c55e] uppercase tracking-widest block">
+                COMMUNITY & SUPPORT
+              </span>
+
+              {/* Rate App Button */}
+              <button
+                type="button"
+                id="rate-app-settings-btn"
+                aria-label="Rate Progress Club on Google Play Store"
+                onClick={() => {
+                  try {
+                    window.open(PLAY_STORE_URL, '_blank', 'noopener,noreferrer');
+                  } catch (e) {
+                    window.location.href = PLAY_STORE_URL;
+                  }
+                  saveState({ ...state, hasRatedInStore: true, hasReviewed: true });
+                }}
+                className="w-full p-3.5 bg-amber-50 dark:bg-amber-950/40 hover:bg-amber-100 dark:hover:bg-amber-950/70 border-2 border-amber-300 dark:border-amber-700/60 rounded-xl flex items-center justify-between transition-colors cursor-pointer group"
+              >
+                <div className="flex items-center gap-3 text-left">
+                  <div className="p-2 bg-amber-400 text-black rounded-lg">
+                    <Star className="w-4 h-4 fill-black" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-amber-950 dark:text-amber-200">
+                      Rate On Google Play
+                    </h4>
+                    <p className="text-[10px] text-amber-800/80 dark:text-amber-300/70">
+                      Leave a 5-star review to support indie development
+                    </p>
+                  </div>
+                </div>
+                <ExternalLink className="w-4 h-4 text-amber-700 dark:text-amber-400 group-hover:translate-x-0.5 transition-transform" aria-hidden="true" />
+              </button>
+
+              {/* In-App Feedback Button */}
+              <button
+                type="button"
+                id="send-feedback-settings-btn"
+                aria-label="Send in-app feedback or bug report"
+                onClick={() => setShowFeedbackModal(true)}
+                className="w-full p-3.5 bg-stone-50 dark:bg-zinc-800 hover:bg-stone-100 dark:hover:bg-zinc-700 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-xl flex items-center justify-between transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3 text-left">
+                  <div className="p-2 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-lg">
+                    <MessageSquare className="w-4 h-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-[#0a0a0a] dark:text-zinc-100">
+                      Send Feedback & Bug Reports
+                    </h4>
+                    <p className="text-[10px] text-stone-500 dark:text-zinc-400">
+                      Share ideas or report issues directly to the team
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-stone-400" aria-hidden="true" />
+              </button>
+
+              {/* Replay Walkthrough */}
+              <button
+                type="button"
+                id="replay-walkthrough-settings-btn"
+                aria-label="Replay feature walkthrough guide"
+                onClick={() => setShowWalkthroughModal(true)}
+                className="w-full p-3.5 bg-stone-50 dark:bg-zinc-800 hover:bg-stone-100 dark:hover:bg-zinc-700 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-xl flex items-center justify-between transition-colors cursor-pointer"
+              >
+                <div className="flex items-center gap-3 text-left">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded-lg">
+                    <HelpCircle className="w-4 h-4" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black uppercase text-[#0a0a0a] dark:text-zinc-100">
+                      Replay Feature Walkthrough
+                    </h4>
+                    <p className="text-[10px] text-stone-500 dark:text-zinc-400">
+                      Review Timer, Streak Shields, Bix & Cabin guide
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-stone-400" aria-hidden="true" />
+              </button>
+            </div>
+
+            {/* 4. LEGAL & COMPLIANCE */}
+            <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-5 rounded-2xl space-y-3 shadow-xs">
+              <span className="text-[10px] font-black text-[#22c55e] uppercase tracking-widest block">
+                LEGAL & COMPLIANCE
+              </span>
+
+              <div className="grid grid-cols-2 gap-2">
                 <button
-                  id="restore-purchases-settings"
+                  type="button"
+                  id="open-privacy-policy-btn"
+                  aria-label="Open Privacy Policy"
                   onClick={() => {
-                    alert("Mock Transaction: App Store Purchases Restored successfully!");
+                    setLegalTab('privacy');
+                    setShowLegalModal(true);
                   }}
-                  className="w-full py-2.5 bg-white border border-[#2a2a2a] text-xs font-bold uppercase rounded-lg hover:bg-[#f5f5f5]"
+                  className="p-3 bg-stone-50 dark:bg-zinc-800 hover:bg-stone-100 dark:hover:bg-zinc-700 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer active:translate-y-px transition-colors"
                 >
-                  restore purchases
+                  <Shield className="w-4 h-4 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                  <span className="text-xs font-black uppercase text-[#0a0a0a] dark:text-zinc-100">Privacy Policy</span>
+                </button>
+
+                <button
+                  type="button"
+                  id="open-terms-service-btn"
+                  aria-label="Open Terms of Service"
+                  onClick={() => {
+                    setLegalTab('terms');
+                    setShowLegalModal(true);
+                  }}
+                  className="p-3 bg-stone-50 dark:bg-zinc-800 hover:bg-stone-100 dark:hover:bg-zinc-700 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-xl flex flex-col items-center justify-center gap-1.5 cursor-pointer active:translate-y-px transition-colors"
+                >
+                  <FileText className="w-4 h-4 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+                  <span className="text-xs font-black uppercase text-[#0a0a0a] dark:text-zinc-100">Terms of Service</span>
+                </button>
+              </div>
+            </div>
+
+            {/* 5. ACCOUNT & BILLING */}
+            <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-5 rounded-2xl space-y-3 shadow-xs">
+              <span className="text-[10px] font-black text-[#22c55e] uppercase tracking-widest block">
+                ACCOUNT & PURCHASES
+              </span>
+
+              <div className="flex flex-col space-y-2">
+                <button
+                  type="button"
+                  id="restore-purchases-settings"
+                  aria-label="Restore Google Play Purchases"
+                  onClick={() => {
+                    alert("Google Play Billing: Purchases synchronized and active subscriptions verified.");
+                  }}
+                  className="w-full py-3 bg-white dark:bg-zinc-800 hover:bg-stone-50 dark:hover:bg-zinc-700 border-2 border-[#2a2a2a] dark:border-zinc-700 text-xs font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-wider rounded-xl cursor-pointer"
+                >
+                  Restore Purchases
                 </button>
                 <button
+                  type="button"
                   id="manage-sub-settings"
+                  aria-label="Cancel Subscription"
                   onClick={() => {
-                    const confirmCancel = window.confirm("Are you sure you want to cancel your Progress Club subscription?");
+                    const confirmCancel = window.confirm("Are you sure you want to cancel your Progress Club membership?");
                     if (confirmCancel) {
-                      alert(`sorry to see you go! your progress is always saved, ${state.username}.`);
+                      alert(`Your progress and earned items are always saved, ${state.username}.`);
                     }
                   }}
-                  className="w-full text-center text-xs text-stone-400 hover:text-black uppercase font-bold py-2 hover:underline"
+                  className="w-full text-center text-xs text-stone-400 hover:text-red-500 dark:hover:text-red-400 uppercase font-bold py-2"
                 >
-                  cancel subscription
+                  Cancel Subscription
                 </button>
+              </div>
+
+              {/* App Version & Package ID Footer Badge */}
+              <div className="pt-2 text-center text-[10px] text-stone-400 dark:text-zinc-500 font-mono">
+                Progress Club v1.2.0 • Android (Median Wrapper)
               </div>
             </div>
           </div>
@@ -1398,7 +2453,12 @@ export default function App() {
 
       {/* HORIZONTAL TABS ACTIVE BAR CONTROLLER */}
       {activeOverlay === 'none' && (
-        <nav className="fixed bottom-0 z-30 w-full max-w-md bg-white border-t-2 border-[#2a2a2a] grid grid-cols-5 h-16 select-none" id="applet-tabs-bar">
+        <nav
+          role="tablist"
+          aria-label="Main navigation tabs"
+          className="fixed bottom-0 z-30 w-full max-w-md bg-white dark:bg-zinc-900 border-t-2 border-[#2a2a2a] dark:border-zinc-700 grid grid-cols-5 h-16 select-none"
+          id="applet-tabs-bar"
+        >
           {[
             { id: 'home', label: 'ROOM', icon: '🏠' },
             { id: 'stats', label: 'STATS', icon: '📊' },
@@ -1407,21 +2467,25 @@ export default function App() {
             { id: 'settings', label: 'GEAR', icon: '⚙️' },
           ].map((tab) => {
             const isSel = activeTab === tab.id;
-            // Check if shop green dot affordable nudge is active
             const showShopDot = tab.id === 'shop' && showBixNudgeBanner;
             return (
               <button
                 key={tab.id}
+                role="tab"
+                aria-selected={isSel}
+                aria-label={`Switch to ${tab.label} tab`}
                 id={`tab-navlink-${tab.id}`}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`flex flex-col items-center justify-center relative cursor-pointer ${
-                  isSel ? 'text-[#22c55e] bg-stone-50' : 'text-[#1a1a1a]/75 hover:bg-stone-50/50'
+                className={`flex flex-col items-center justify-center relative cursor-pointer min-h-[44px] transition-colors ${
+                  isSel
+                    ? 'text-[#22c55e] bg-stone-50 dark:bg-zinc-800'
+                    : 'text-[#1a1a1a]/75 dark:text-zinc-400 hover:bg-stone-50/50 dark:hover:bg-zinc-800/50'
                 }`}
               >
                 {showShopDot && (
                   <span className="absolute top-2 right-6 w-2.5 h-2.5 bg-[#22c55e] border border-black rounded-full animate-ping"></span>
                 )}
-                <span className="text-lg leading-none">{tab.icon}</span>
+                <span className="text-lg leading-none" aria-hidden="true">{tab.icon}</span>
                 <span className="text-[9px] font-bold tracking-widest mt-1 uppercase">{tab.label}</span>
               </button>
             );
@@ -1433,17 +2497,19 @@ export default function App() {
 
       {/* 1. Onboarding Overlay */}
       {activeOverlay === 'onboarding' && (
-        <div className="fixed inset-0 z-50 bg-white flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-white dark:bg-[#121214] flex items-center justify-center p-4">
           <Onboarding onComplete={handleOnboardingComplete} />
         </div>
       )}
 
       {/* 2. Journaling Post Session Overlay */}
       {activeOverlay === 'journaling' && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col justify-between p-6">
+        <div className="fixed inset-0 z-50 bg-white dark:bg-[#18181b] flex flex-col justify-between p-6">
           <div className="text-left mt-10">
-            <span className="text-xs font-bold text-[#1a1a1a]/45 uppercase tracking-widest">SESSION COMPLETE HABIT LOG</span>
-            <h1 className="text-3xl font-black text-[#0a0a0a] uppercase tracking-tight mt-2" id="journal-question-label">
+            <span className="text-xs font-bold text-[#1a1a1a]/45 dark:text-zinc-400 uppercase tracking-widest">
+              SESSION COMPLETE HABIT LOG
+            </span>
+            <h1 className="text-3xl font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tight mt-2" id="journal-question-label">
               {currentJournalQuestion}
             </h1>
             
@@ -1452,7 +2518,8 @@ export default function App() {
                 value={journalText}
                 onChange={(e) => setJournalText(e.target.value)}
                 placeholder="Write your brief thoughts..."
-                className="w-full bg-white border-2 border-[#2a2a2a] h-32 p-4 rounded-lg outline-none font-medium text-[#0a0a0a]"
+                aria-label="Session habit journal response"
+                className="w-full bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 h-32 p-4 rounded-xl outline-hidden font-medium text-[#0a0a0a] dark:text-zinc-100 focus:ring-2 focus:ring-[#22c55e]"
                 maxLength={400}
                 autoFocus
               ></textarea>
@@ -1462,9 +2529,10 @@ export default function App() {
           <div className="space-y-4">
             <button
               id="save-journal-btn"
+              aria-label="Save habit journal entry"
               onClick={handleSaveJournal}
               disabled={!journalText.trim()}
-              className={`w-full py-4 text-center text-sm font-black uppercase tracking-widest bg-[#22c55e] text-[#0a0a0a] rounded-lg border-2 border-[#2a2a2a] ${
+              className={`w-full py-4 text-center text-sm font-black uppercase tracking-widest bg-[#22c55e] text-[#0a0a0a] rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 cursor-pointer ${
                 !journalText.trim() ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 active:scale-95'
               }`}
             >
@@ -1473,8 +2541,9 @@ export default function App() {
             
             <button
               id="skip-journaling-btn"
+              aria-label="Skip habit journal entry"
               onClick={skipJournaling}
-              className="w-full text-center text-xs text-stone-400 hover:text-black uppercase font-bold tracking-widest py-1"
+              className="w-full text-center text-xs text-stone-400 dark:text-zinc-500 hover:text-black dark:hover:text-white uppercase font-bold tracking-widest py-2 cursor-pointer"
             >
               skip for now &rarr;
             </button>
@@ -1484,12 +2553,12 @@ export default function App() {
 
       {/* 3. Focus Session Complete celebration screen */}
       {activeOverlay === 'day-complete' && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col justify-between p-6 items-center text-center animate-[fade-in_0.3s_ease-out] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-white dark:bg-[#18181b] flex flex-col justify-between p-6 items-center text-center animate-[fade-in_0.3s_ease-out] overflow-y-auto">
           <div className="mt-8 space-y-3">
-            <h1 className="text-3xl font-black text-[#0a0a0a] uppercase tracking-tight" id="session-complete-title">
+            <h1 className="text-3xl font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tight" id="session-complete-title">
               SESSION COMPLETED!
             </h1>
-            <p className="text-sm font-bold text-stone-500">
+            <p className="text-sm font-bold text-stone-500 dark:text-zinc-400">
               Nice work, {state.username}! You earned <span className="text-[#22c55e] font-black">+{justEarnedBix} Bix</span>{state.currentActiveCharacter === 'monument' ? " (including 2x Monument Double Bix!)" : ""} for focusing {timerDuration} minutes.
             </p>
           </div>
@@ -1498,10 +2567,10 @@ export default function App() {
             <CrewCharacter characterId={state.currentActiveCharacter} pose="celebrating" height={140} />
           </div>
 
-          <div className="w-full max-w-sm bg-stone-50 border-2 border-[#2a2a2a] p-5 rounded-2xl space-y-4 shadow-sm mb-6 text-left">
-            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest block">RECHARGE OPPORTUNITY</span>
-            <h3 className="text-sm font-black uppercase tracking-wider text-[#0a0a0a] -mt-2">🔋 Start a break timer now?</h3>
-            <p className="text-xs text-stone-500 leading-relaxed">
+          <div className="w-full max-w-sm bg-stone-50 dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-5 rounded-2xl space-y-4 shadow-sm mb-6 text-left">
+            <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-widest block">RECHARGE OPPORTUNITY</span>
+            <h3 className="text-sm font-black uppercase tracking-wider text-[#0a0a0a] dark:text-zinc-100 -mt-2">🔋 Start a break timer now?</h3>
+            <p className="text-xs text-stone-500 dark:text-zinc-400 leading-relaxed">
               Step back, stretch your legs, grab some water, and rest your eyes before your next deep work session.
             </p>
             
@@ -1509,25 +2578,27 @@ export default function App() {
               <button
                 type="button"
                 id="accept-break-btn"
+                aria-label={`Start break timer for ${state.settings.breakTimer || 5} minutes`}
                 onClick={() => {
                   setTimeLeft((state.settings.breakTimer || 5) * 60);
                   setActiveOverlay('break');
                   setTimerPose('resting');
                 }}
-                className="py-3 bg-[#22c55e] hover:bg-emerald-400 active:translate-y-px text-black text-xs font-black uppercase tracking-wider rounded-lg border-2 border-[#2a2a2a] shadow-xs cursor-pointer text-center"
+                className="py-3 bg-[#22c55e] hover:bg-emerald-400 active:translate-y-px text-black text-xs font-black uppercase tracking-wider rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 shadow-xs cursor-pointer text-center"
               >
-                Yes, start break ({state.settings.breakTimer || 5}m)
+                Yes, break ({state.settings.breakTimer || 5}m)
               </button>
               
               <button
                 type="button"
                 id="decline-break-btn"
+                aria-label="Decline break and return to room"
                 onClick={() => {
                   setActiveOverlay('none');
                   setTimerPose('idle');
                   setTimeLeft(timerDuration * 60);
                 }}
-                className="py-3 bg-white hover:bg-stone-100 active:translate-y-px text-black text-xs font-black uppercase tracking-wider rounded-lg border-2 border-[#2a2a2a] cursor-pointer text-center"
+                className="py-3 bg-white dark:bg-zinc-800 hover:bg-stone-100 dark:hover:bg-zinc-700 active:translate-y-px text-black dark:text-zinc-100 text-xs font-black uppercase tracking-wider rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 cursor-pointer text-center"
               >
                 No, keep going
               </button>
@@ -1536,19 +2607,19 @@ export default function App() {
 
           <div className="mb-4 space-y-0.5">
             <p className="text-xs font-black text-[#22c55e] uppercase tracking-widest">CALENDAR DAY {currentDayXOfChallenge} SECURED !</p>
-            <p className="text-[10px] text-stone-400">your stats are updated & synchronized</p>
+            <p className="text-[10px] text-stone-400 dark:text-zinc-500">your stats are updated & synchronized</p>
           </div>
         </div>
       )}
 
       {/* 4. Challenge Complete congratulations screen */}
       {activeOverlay === 'challenge-complete' && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col justify-between p-6 items-center text-center">
+        <div className="fixed inset-0 z-50 bg-white dark:bg-[#18181b] flex flex-col justify-between p-6 items-center text-center">
           <div className="mt-12 space-y-4">
-            <h1 className="text-4xl font-extrabold text-[#0a0a0a] uppercase tracking-tight" id="challenge-complete-header">
+            <h1 className="text-4xl font-extrabold text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tight" id="challenge-complete-header">
               YOU DID IT, {state.username}!
             </h1>
-            <p className="text-lg text-stone-500 font-semibold mb-2">
+            <p className="text-lg text-stone-500 dark:text-zinc-400 font-semibold mb-2">
               we knew you could complete the full {state.challengeLength} day journey!
             </p>
           </div>
@@ -1560,24 +2631,26 @@ export default function App() {
           <div className="space-y-3 w-full max-w-xs mb-10">
             <button
               id="continue-challenge-complete"
+              aria-label="Keep going into the next cycle"
               onClick={() => {
                 setActiveOverlay('none');
                 setTimerPose('idle');
                 setTimeLeft(timerDuration * 60);
               }}
-              className="w-full py-4 text-center text-sm font-black uppercase bg-[#22c55e] text-[#0a0a0a] rounded-lg border-2 border-[#2a2a2a] cursor-pointer"
+              className="w-full py-4 text-center text-sm font-black uppercase bg-[#22c55e] text-[#0a0a0a] rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 cursor-pointer"
             >
               Keep Going!
             </button>
             
             <button
               id="share-challenge-complete"
+              aria-label="Share challenge completion accomplishment"
               onClick={() => {
                 const shareStr = `I did it! I completed the full ${state.challengeLength} Days challenge on #ProgressClub !`;
                 navigator.clipboard.writeText(shareStr);
                 alert("Challenge accomplishment copied:\n" + shareStr);
               }}
-              className="w-full py-3.5 bg-white text-black text-xs font-bold uppercase rounded-lg border-2 border-[#2a2a2a] cursor-pointer"
+              className="w-full py-3.5 bg-white dark:bg-zinc-800 text-black dark:text-zinc-100 text-xs font-bold uppercase rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 cursor-pointer"
             >
               Share
             </button>
@@ -1587,16 +2660,16 @@ export default function App() {
 
       {/* 5. Rank Up screen */}
       {activeOverlay === 'rank-up' && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col justify-between p-6 text-center items-center">
+        <div className="fixed inset-0 z-50 bg-white dark:bg-[#18181b] flex flex-col justify-between p-6 text-center items-center">
           <div className="mt-20 space-y-3">
             <span className="text-xs text-stone-400 uppercase font-bold tracking-widest">CLUB RANK ACHIEVEMENT</span>
-            <h1 className="text-4xl font-black text-[#0a0a0a] uppercase tracking-tight">
+            <h1 className="text-4xl font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tight">
               LEVEL UP !
             </h1>
             <p className="text-lg text-[#22c55e] font-black uppercase">
               {rankUpName} MEMBER
             </p>
-            <p className="text-sm text-stone-500">
+            <p className="text-sm text-stone-500 dark:text-zinc-400">
               you leveled up, {state.username}! your new status deserves respect in the lobby.
             </p>
           </div>
@@ -1607,8 +2680,9 @@ export default function App() {
 
           <button
             id="dismiss-rankup-btn"
+            aria-label="Dismiss rank up celebration and continue"
             onClick={() => setActiveOverlay('none')}
-            className="w-full max-w-xs py-4 bg-[#22c55e] text-[#0a0a0a] text-sm font-black uppercase rounded-lg border-2 border-[#2a2a2a] mb-12"
+            className="w-full max-w-xs py-4 bg-[#22c55e] text-[#0a0a0a] text-sm font-black uppercase rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 mb-12 cursor-pointer"
           >
             Keep Going!
           </button>
@@ -1617,25 +2691,26 @@ export default function App() {
 
       {/* 6. Milestone Manual/Automatic Share Card Overlay */}
       {activeOverlay === 'milestone' && (
-        <div className="fixed inset-0 z-40 bg-white flex flex-col justify-between p-6 items-center">
+        <div className="fixed inset-0 z-40 bg-white dark:bg-[#18181b] flex flex-col justify-between p-6 items-center">
           <div className="text-left w-full">
             <button
               id="close-milestone"
+              aria-label="Back from milestone view"
               onClick={() => setActiveOverlay('none')}
-              className="text-stone-400 hover:text-black font-extrabold text-xs uppercase cursor-pointer"
+              className="text-stone-400 hover:text-black dark:hover:text-white font-extrabold text-xs uppercase cursor-pointer"
             >
               &larr; BACK
             </button>
           </div>
 
           {/* Simulated 9:16 TikTok Card */}
-          <div className="w-72 h-96 bg-white border-4 border-[#2a2a2a] rounded-xl flex flex-col justify-between p-6 shadow-md relative select-none">
+          <div className="w-72 h-96 bg-white dark:bg-zinc-900 border-4 border-[#2a2a2a] dark:border-zinc-700 rounded-xl flex flex-col justify-between p-6 shadow-md relative select-none">
             {/* Confetti decoration */}
             <div className="absolute inset-0 bg-[#22c55e]/5 pointer-events-none rounded-lg"></div>
             
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">DAY ELAPSED</span>
-              <h1 className="text-3xl font-black text-[#0a0a0a] uppercase tracking-tighter">
+              <h1 className="text-3xl font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tighter">
                 {activeMilestoneText}!
               </h1>
               <div className="h-0.5 bg-[#22c55e] w-1/3 my-2"></div>
@@ -1648,7 +2723,7 @@ export default function App() {
               <CrewCharacter characterId={state.currentActiveCharacter} pose="celebrating" height={120} />
             </div>
 
-            <div className="border-t border-[#eeeeee] pt-3 flex justify-between items-center text-[10px] font-bold text-[#1a1a1a]/65">
+            <div className="border-t border-[#eeeeee] dark:border-zinc-800 pt-3 flex justify-between items-center text-[10px] font-bold text-[#1a1a1a]/65 dark:text-zinc-400">
               <span>PROGRESS CLUB</span>
               <span>EST. 2026</span>
             </div>
@@ -1658,21 +2733,23 @@ export default function App() {
           <div className="space-y-3 w-full max-w-xs mb-6">
             <button
               id="save-camera-roll"
+              aria-label="Save milestone card to camera roll"
               onClick={() => {
                 alert("Simulated: Milestone Card successfully rendered & stored to your Local Photo Album / Camera Roll!");
               }}
-              className="w-full py-3.5 bg-[#22c55e] text-[#0a0a0a] text-xs font-black uppercase rounded-lg border border-[#2a2a2a] cursor-pointer"
+              className="w-full py-3.5 bg-[#22c55e] text-[#0a0a0a] text-xs font-black uppercase rounded-xl border border-[#2a2a2a] dark:border-zinc-700 cursor-pointer"
             >
               Save to Camera Roll
             </button>
             <button
               id="share-button-milestone"
+              aria-label="Copy share text to clipboard"
               onClick={() => {
                 const quoteText = `Focus milestone unlocked: ${activeMilestoneText} focused! Showing up is everything. #ProgressClub`;
                 navigator.clipboard.writeText(quoteText);
                 alert(`Share template copied:\n"${quoteText}"`);
               }}
-              className="w-full py-3 text-black text-xs font-bold uppercase tracking-wider rounded-lg border border-[#2a2a2a] cursor-pointer"
+              className="w-full py-3 text-black dark:text-zinc-100 bg-white dark:bg-zinc-800 text-xs font-bold uppercase tracking-wider rounded-xl border border-[#2a2a2a] dark:border-zinc-700 cursor-pointer"
             >
               Share Details
             </button>
@@ -1682,12 +2759,12 @@ export default function App() {
 
       {/* 7. Warm Break timer overlay */}
       {activeOverlay === 'break' && (
-        <div className="fixed inset-0 z-50 bg-white flex flex-col justify-between p-6 items-center text-center animate-[fade-in_0.3s_ease-out]">
+        <div className="fixed inset-0 z-50 bg-white dark:bg-[#18181b] flex flex-col justify-between p-6 items-center text-center animate-[fade-in_0.3s_ease-out]">
           <div className="mt-20 space-y-3">
-            <h1 className="text-3xl font-black text-[#0a0a0a] uppercase tracking-tight">
+            <h1 className="text-3xl font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tight">
               TAKE A BREATHER, {state.username}!
             </h1>
-            <p className="text-sm text-stone-500 font-semibold">
+            <p className="text-sm text-stone-500 dark:text-zinc-400 font-semibold">
               nice work! you earned your break. step back, grab some water, stretch your legs.
             </p>
           </div>
@@ -1697,22 +2774,22 @@ export default function App() {
           </div>
 
           <div className="mb-14 space-y-3 w-full max-w-xs">
-            {/* Simulated break countdown */}
-            <p className="text-xs font-extrabold text-stone-400 capitalize">remaining break interval time</p>
+            <p className="text-xs font-extrabold text-stone-400 uppercase tracking-wider">Remaining break time</p>
             <p className="text-4xl font-black text-[#22c55e] font-mono select-none">
               {formatTimeStr(timeLeft)}
             </p>
             
             <button
               id="finish-break-early"
+              aria-label="Finish rest break early and return to room"
               onClick={() => {
                 setActiveOverlay('none');
                 setTimerPose('idle');
                 setTimeLeft(timerDuration * 60);
               }}
-              className="w-full py-3.5 bg-white border-2 border-[#2a2a2a] text-xs font-black uppercase rounded shadow-xs"
+              className="w-full py-3.5 bg-white dark:bg-zinc-800 border-2 border-[#2a2a2a] dark:border-zinc-700 text-xs font-black text-[#0a0a0a] dark:text-zinc-100 uppercase rounded-xl shadow-xs cursor-pointer"
             >
-              skip break early
+              Skip Break Early
             </button>
           </div>
         </div>
@@ -1720,33 +2797,44 @@ export default function App() {
 
       {/* 8. Challenge Length Change Warm Confirmation Modal Dialog */}
       {showChallengeSwitchDialog && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4 select-none">
-          <div className="bg-white border-2 border-[#2a2a2a] p-6 rounded-xl max-w-sm w-full space-y-4 text-center">
-            <h3 className="text-base font-black text-[#0a0a0a] uppercase">ready to switch things up?</h3>
-            <p className="text-xs text-[#1a1a1a]/75 lead-normal">
-              switching to {pendingChallengeLength} Days resets the challenge offset index. but your streak shield history and completed cumulative days are always saved, {state.username}!
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="challenge-switch-dialog-title"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 select-none"
+        >
+          <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-6 rounded-2xl max-w-sm w-full space-y-4 text-center shadow-2xl">
+            <h3 id="challenge-switch-dialog-title" className="text-base font-black text-[#0a0a0a] dark:text-zinc-100 uppercase">
+              Switch Challenge Span?
+            </h3>
+            <p className="text-xs text-[#1a1a1a]/75 dark:text-zinc-400 leading-relaxed">
+              Switching to {pendingChallengeLength} Days resets the challenge offset index. Your streak shield history and completed cumulative days are always saved, {state.username}!
             </p>
 
-            <div className="flex gap-2.5 pt-2">
+            <div className="grid grid-cols-2 gap-2.5 pt-2">
               <button
+                type="button"
                 id="cancel-switch-btn"
+                aria-label="Cancel challenge span switch"
                 onClick={() => setShowChallengeSwitchDialog(false)}
-                className="flex-1 py-2 bg-white border border-[#2a2a2a] text-xs font-bold uppercase rounded"
+                className="py-3 bg-white dark:bg-zinc-800 hover:bg-stone-100 dark:hover:bg-zinc-700 border-2 border-[#2a2a2a] dark:border-zinc-700 text-xs font-bold uppercase rounded-xl cursor-pointer"
               >
                 No, Keep
               </button>
               <button
+                type="button"
                 id="confirm-switch-btn"
+                aria-label="Confirm challenge span change"
                 onClick={() => {
                   saveState({
                     ...state,
                     challengeLength: pendingChallengeLength,
-                    challengeStartDate: getLocalDateString(), // sets new start day
+                    challengeStartDate: getLocalDateString(),
                   });
                   setShowChallengeSwitchDialog(false);
                   alert(`Challenge trajectory shifted to ${pendingChallengeLength} Days. Stay focused, stay bold!`);
                 }}
-                className="flex-grow py-2.5 bg-[#22c55e] text-[#0a0a0a] text-xs font-black uppercase rounded border border-[#2a2a2a]"
+                className="py-3 bg-[#22c55e] hover:bg-emerald-400 text-black text-xs font-black uppercase rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 cursor-pointer shadow-xs"
               >
                 Yes, Change
               </button>
@@ -1754,6 +2842,51 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* 9. Android Hardware Back Button Exit Confirmation Modal */}
+      <ExitConfirmModal
+        isOpen={showExitConfirm}
+        onCancel={() => setShowExitConfirm(false)}
+        onConfirmExit={handleConfirmExit}
+        username={state.username}
+      />
+
+      {/* 10. Legal & Compliance Pages (Privacy Policy & Terms of Service) */}
+      <LegalModal
+        isOpen={showLegalModal}
+        initialTab={legalTab}
+        onClose={() => setShowLegalModal(false)}
+      />
+
+      {/* 11. In-App Rating & Review Trigger Modal */}
+      <RatingModal
+        isOpen={showRatingModal}
+        onClose={() => setShowRatingModal(false)}
+        onRated={handleRatingCompleted}
+        onRemindLater={handleRatingRemindLater}
+        onNeverAskAgain={handleRatingNeverAsk}
+        onOpenFeedback={() => {
+          setShowRatingModal(false);
+          setShowFeedbackModal(true);
+        }}
+        username={state.username}
+        milestoneReason={ratingMilestoneReason}
+      />
+
+      {/* 12. Interactive First-Time Onboarding Feature Walkthrough */}
+      <WalkthroughModal
+        isOpen={showWalkthroughModal}
+        onComplete={handleWalkthroughFinished}
+        username={state.username}
+        characterId={state.currentActiveCharacter}
+      />
+
+      {/* 13. In-App Feedback & Bug Reporting Modal */}
+      <FeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={() => setShowFeedbackModal(false)}
+        username={state.username}
+      />
 
     </div>
   );

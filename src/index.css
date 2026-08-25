@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer utilities {
   @keyframes drift {
     0% { transform: translateX(-120px); }
@@ -41,10 +43,23 @@
   --font-mono: 'Quicksand', Arial, sans-serif;
 }
 
+:root {
+  --app-bg: #fafafa;
+  --app-text: #0a0a0a;
+}
+
+html.dark {
+  color-scheme: dark;
+  --app-bg: #121214;
+  --app-text: #f4f4f5;
+}
+
 body {
   font-family: var(--font-sans);
-  background-color: #fafafa;
-  color: #0a0a0a;
+  background-color: var(--app-bg);
+  color: var(--app-text);
+  transition: background-color 0.2s ease, color 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .anim-rain-back {
@@ -58,4 +73,3 @@ body {
 .anim-rain-fore {
   animation: rain-fall 0.45s linear infinite;
 }
-

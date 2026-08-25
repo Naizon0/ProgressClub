@@ -33,6 +33,7 @@ interface OfficeRoomProps {
   exerciseType?: 'dumbbells' | 'punching';
   equippedItems?: string[];
   itemPositions?: Record<string, { x: number; y: number }>;
+  todaysOneThing?: { text: string; date: string; completed: boolean };
   onUpdateItemPosition?: (itemId: string, x: number, y: number) => void;
 }
 
@@ -48,6 +49,7 @@ export const OfficeRoom: React.FC<OfficeRoomProps> = ({
   exerciseType = 'dumbbells',
   equippedItems = [],
   itemPositions = {},
+  todaysOneThing,
   onUpdateItemPosition,
 }) => {
   const [time, setTime] = useState(new Date());
@@ -1626,9 +1628,32 @@ export const OfficeRoom: React.FC<OfficeRoomProps> = ({
   };
 
   return (
-    <div ref={containerRef} className={`relative w-full h-64 bg-[#f5f5f5] border-2 rounded-lg overflow-hidden ${activeGlowClass}`}>
+    <div ref={containerRef} className={`relative w-full h-64 bg-[#f5f5f5] border-2 rounded-2xl overflow-hidden ${activeGlowClass}`}>
       {renderRoom()}
       {renderItemDecorations()}
+
+      {/* TODAY'S ONE THING VISUAL HIGHLIGHT IN ROOM UI */}
+      {todaysOneThing && (
+        <div
+          id="office-todays-one-thing-plaque"
+          className="absolute top-2 left-2 z-30 max-w-[210px] bg-black/85 backdrop-blur-md border-2 border-[#22c55e] shadow-[0_0_15px_rgba(34,197,94,0.4)] rounded-xl px-2.5 py-1.5 text-left pointer-events-auto select-none animate-in fade-in zoom-in-95 duration-300"
+        >
+          <div className="flex items-center space-x-1.5 mb-0.5">
+            <span className="text-[9px] bg-[#22c55e] text-black font-black px-1.5 py-0.2 rounded uppercase tracking-wider flex items-center gap-1">
+              <span>★</span>
+              <span>ONE THING</span>
+            </span>
+            {todaysOneThing.completed && (
+              <span className="text-[8px] bg-emerald-500/30 text-[#22c55e] font-black px-1 rounded">
+                COMPLETED
+              </span>
+            )}
+          </div>
+          <p className={`text-[10px] font-bold leading-tight truncate text-white ${todaysOneThing.completed ? 'line-through opacity-75' : ''}`}>
+            {todaysOneThing.text}
+          </p>
+        </div>
+      )}
     </div>
   );
 };

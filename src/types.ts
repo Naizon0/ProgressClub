@@ -23,7 +23,33 @@ export interface DailyGoal {
   completedDates: string[]; // dates is a list of YYYY-MM-DD
 }
 
+export interface TodaysOneThing {
+  text: string;
+  date: string; // YYYY-MM-DD
+  completed: boolean;
+  completedAt?: string;
+}
+
+export interface BixLossRecord {
+  date: string;
+  amountLost: number;
+  reason: string;
+  streakLost: boolean;
+  shieldUsed: boolean;
+}
+
 export type ChallengeLength = 21 | 75 | 365;
+
+export type ThemeMode = 'light' | 'dark' | 'system';
+
+export interface FeedbackEntry {
+  id: string;
+  category: 'bug' | 'feature' | 'general' | 'compliment';
+  message: string;
+  email?: string;
+  timestamp: string;
+  appVersion: string;
+}
 
 export interface AppState {
   username: string;
@@ -49,12 +75,22 @@ export interface AppState {
   equippedItems?: string[];
   itemPositions?: Record<string, { x: number; y: number }>;
   dailyGoals?: DailyGoal[];
+  todaysOneThing?: TodaysOneThing;
+  lastActiveDate?: string; // YYYY-MM-DD
+  bixLossHistory?: BixLossRecord[];
+  pendingLossModal?: BixLossRecord | null;
   settings: {
     durationDefault: number; // e.g. 25
     breakTimer: number; // e.g. 5
     dailyReminderTime: string; // "14:00"
+    notificationsEnabled?: boolean;
+    theme?: ThemeMode; // 'light' | 'dark' | 'system'
   };
   hasReviewed: boolean; // App Store prompt review
+  hasRatedInStore?: boolean;
+  lastRatingDismissedDate?: string;
+  neverShowRating?: boolean;
+  walkthroughCompleted?: boolean;
   unlockedRanks: string[]; // already unlocked rank milestones
 }
 

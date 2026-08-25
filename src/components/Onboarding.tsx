@@ -1095,7 +1095,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
             {[
               { id: 'weekly', name: 'Weekly Access', price: '$1.50 / week', sub: 'Weekly access to all features. Billed weekly. Cancel any time.', badge: '' },
               { id: 'monthly', name: 'Monthly Access', price: '$5.50 / month', sub: 'Standard monthly plan. Cancel any time. Great for long-term consistency.', badge: '' },
-              { id: 'yearly', name: 'Lifetime Access', price: '$12.00 / lifetime', sub: 'One-time payment. Executive Suite Lifetime Access Pass. Never pay again.', badge: 'best value' }
+              { id: 'yearly', name: 'Yearly Access', price: '$12.00 / year', sub: 'Billed annually. Full standard access to Progress Club for an entire year.', badge: 'best value' }
             ].map((plan) => {
               const isSel = selectedPlan === plan.id;
               const isYearly = plan.id === 'yearly';
@@ -1106,23 +1106,17 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                   onClick={() => setSelectedPlan(plan.id as any)}
                   className={`w-full p-4 text-left rounded-lg border-2 transition-all relative flex flex-col justify-between ${
                     isSel
-                      ? isYearly
-                        ? 'bg-[#fffbeb] border-amber-500 border-l-8 shadow-sm'
-                        : 'bg-white border-[#22c55e] border-l-8 shadow-sm'
+                      ? 'bg-white border-[#22c55e] border-l-8 shadow-sm'
                       : 'bg-white border-[#2a2a2a] hover:bg-[#f5f5f5]'
                   }`}
                 >
                   {plan.badge && (
-                    <span className={`absolute top-2 right-2 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded border shadow-sm ${
-                      isYearly
-                        ? 'bg-gradient-to-r from-amber-400 via-yellow-200 to-amber-500 text-stone-900 border-amber-600'
-                        : 'bg-[#22c55e] text-[#0a0a0a] border border-[#2a2a2a]'
-                    }`}>
+                    <span className="absolute top-2 right-2 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded border shadow-sm bg-[#22c55e] text-[#0a0a0a] border-[#2a2a2a]">
                       ✨ {plan.badge}
                     </span>
                   )}
                   <h3 className="text-base font-bold text-[#0a0a0a] uppercase">{plan.name}</h3>
-                  <p className={`text-lg font-extrabold ${isYearly ? 'text-amber-600' : 'text-[#22c55e]'}`}>{plan.price}</p>
+                  <p className="text-lg font-extrabold text-[#22c55e]">{plan.price}</p>
                   <p className="text-xs text-[#1a1a1a]/65">{plan.sub}</p>
                 </button>
               );
