@@ -75,14 +75,12 @@ function getDateForOffset(startDateStr: string, offsetDays: number): string {
 
 interface StatsViewProps {
   state: AppState;
-  onUnlockExecutive: () => void;
-  onOpenShop: () => void;
+  onOpenShop?: () => void;
   onAddJournalEntry?: (question: string, answer: string) => void;
 }
 
 export const StatsView: React.FC<StatsViewProps> = ({
   state,
-  onUnlockExecutive,
   onOpenShop,
   onAddJournalEntry,
 }) => {
@@ -416,26 +414,6 @@ export const StatsView: React.FC<StatsViewProps> = ({
               <CrewCharacter characterId="mantis" pose="idle" height={70} />
             </div>
           </div>
-
-          {/* Executive Analytics Lock wall */}
-          {!state.isExecutive && (
-            <div className="bg-white border-2 border-[#2a2a2a] p-5 rounded-xl text-center relative overflow-hidden space-y-3">
-              <div className="absolute top-2 right-2 text-xs bg-[#eeeeee] border border-[#2a2a2a] p-1.5 rounded-full">
-                🔒
-              </div>
-              <h4 className="text-sm font-black uppercase text-[#0a0a0a]">EXECUTIVE HABIT FORECAST</h4>
-              <p className="text-xs text-[#1a1a1a]/75">
-                Unlock multi-month forecasts, productivity curves, and 2x Bix earnings with the Executive Pass.
-              </p>
-              <button
-                id="analytics-unlock-btn"
-                onClick={onUnlockExecutive}
-                className="w-full py-2.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-[#0a0a0a] text-xs font-black uppercase tracking-widest rounded border border-[#2a2a2a] hover:opacity-95 shadow active:translate-y-px transition-all cursor-pointer"
-              >
-                unlock executive tier
-              </button>
-            </div>
-          )}
         </div>
       )}
 

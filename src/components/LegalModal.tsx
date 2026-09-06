@@ -154,7 +154,7 @@ export const LegalModal: React.FC<LegalModalProps> = ({
               <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-300 dark:border-blue-700/60 p-3 rounded-xl flex items-start gap-2.5">
                 <CheckCircle2 className="w-4 h-4 text-blue-700 dark:text-blue-400 shrink-0 mt-0.5" aria-hidden="true" />
                 <p className="text-[11px] text-blue-900 dark:text-blue-300 font-medium">
-                  <strong>Agreement Summary:</strong> By using Progress Club, you agree to build positive habits respectfully, use the timer responsibly, and acknowledge our virtual currency and subscription terms.
+                  <strong>Agreement Summary:</strong> Progress Club is a 100% free focus companion. All characters, rooms, and customization items are unlocked purely by earning focus points (Bix). No payment or subscription is required.
                 </p>
               </div>
 
@@ -172,16 +172,16 @@ export const LegalModal: React.FC<LegalModalProps> = ({
                   2. Virtual Currency (Bix) & Digital Collectibles
                 </h3>
                 <p className="text-stone-600 dark:text-zinc-400">
-                  "Bix" is an in-app reward point earned through deep work sessions and daily habit completion. Bix has no real-world monetary value, cannot be redeemed for fiat currency, and cannot be transferred between third parties. All virtual workspace decorations and characters are digital goods for personal productivity enjoyment.
+                  "Bix" is an in-app reward point earned strictly through deep work sessions and daily habit completion. Bix has no real-world monetary value, cannot be bought or sold for real money, cannot be redeemed for fiat currency, and cannot be transferred between third parties.
                 </p>
               </div>
 
               <div>
                 <h3 className="text-sm font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tight mb-1">
-                  3. In-App Subscriptions & Billing
+                  3. Free & Open Experience
                 </h3>
                 <p className="text-stone-600 dark:text-zinc-400">
-                  Optional Executive Club memberships and passes are processed securely via Google Play In-App Billing or designated app stores. Subscriptions auto-renew unless cancelled at least 24 hours prior to the conclusion of the active billing cycle in your Google Play subscription management console.
+                  Progress Club does not require any paid memberships, in-app purchases, or payment credentials. All features, analytics, and content are unlocked through consistent daily focus sessions.
                 </p>
               </div>
 

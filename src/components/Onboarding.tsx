@@ -1070,8 +1070,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
           <button
             id="summary-step2-next"
-            onClick={() => setPaywallStep(3)}
-            className="w-full py-4 mt-6 text-center text-sm font-bold uppercase tracking-wider bg-[#22c55e] text-[#0a0a0a] rounded-lg border border-[#2a2a2a] cursor-pointer"
+            onClick={handleStartJourney}
+            className="w-full py-4 mt-6 text-center text-sm font-bold uppercase tracking-wider bg-[#22c55e] text-[#0a0a0a] rounded-lg border border-[#2a2a2a] cursor-pointer hover:opacity-90 transition-opacity"
           >
             this is me
           </button>
@@ -1079,77 +1079,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
       );
     }
 
-    // Actual paywall sub-screen (Step 3)
-    return (
-      <div className="flex flex-col flex-1 justify-between p-6 overflow-y-auto max-h-[90vh]">
-        <div className="text-left mt-4">
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#0a0a0a] uppercase mb-1" id="paywall-header">
-            ready to begin, {nameInput}?
-          </h1>
-          <p className="text-[#1a1a1a]/70 text-sm mb-6">
-            join Progress Club and start your 21 day journey today. cancel any time.
-          </p>
-
-          {/* Subscription Option cards */}
-          <div className="space-y-3">
-            {[
-              { id: 'weekly', name: 'Weekly Access', price: '$1.50 / week', sub: 'Weekly access to all features. Billed weekly. Cancel any time.', badge: '' },
-              { id: 'monthly', name: 'Monthly Access', price: '$5.50 / month', sub: 'Standard monthly plan. Cancel any time. Great for long-term consistency.', badge: '' },
-              { id: 'yearly', name: 'Yearly Access', price: '$12.00 / year', sub: 'Billed annually. Full standard access to Progress Club for an entire year.', badge: 'best value' }
-            ].map((plan) => {
-              const isSel = selectedPlan === plan.id;
-              const isYearly = plan.id === 'yearly';
-              return (
-                <button
-                  key={plan.id}
-                  id={`plan-card-${plan.id}`}
-                  onClick={() => setSelectedPlan(plan.id as any)}
-                  className={`w-full p-4 text-left rounded-lg border-2 transition-all relative flex flex-col justify-between ${
-                    isSel
-                      ? 'bg-white border-[#22c55e] border-l-8 shadow-sm'
-                      : 'bg-white border-[#2a2a2a] hover:bg-[#f5f5f5]'
-                  }`}
-                >
-                  {plan.badge && (
-                    <span className="absolute top-2 right-2 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded border shadow-sm bg-[#22c55e] text-[#0a0a0a] border-[#2a2a2a]">
-                      ✨ {plan.badge}
-                    </span>
-                  )}
-                  <h3 className="text-base font-bold text-[#0a0a0a] uppercase">{plan.name}</h3>
-                  <p className="text-lg font-extrabold text-[#22c55e]">{plan.price}</p>
-                  <p className="text-xs text-[#1a1a1a]/65">{plan.sub}</p>
-                </button>
-              );
-            })}
-          </div>
-
-          <p className="text-[11px] text-[#1a1a1a]/60 text-center mt-4">
-            all plans include full access to Progress Club. no hidden fees. cancel any time.
-          </p>
-        </div>
-
-        <div className="space-y-2 mt-4">
-          <button
-            id="start-journey-btn"
-            onClick={handleStartJourney}
-            className="w-full py-4 text-center text-sm font-bold uppercase tracking-wider bg-[#22c55e] text-[#0a0a0a] rounded-lg border border-[#2a2a2a] cursor-pointer hover:opacity-90 transition-opacity"
-          >
-            start my journey
-          </button>
-          
-          <button
-            id="restore-purchases-btn"
-            onClick={() => {
-              alert("Mock Purchase: Purchases Restored successfully!");
-              handleStartJourney();
-            }}
-            className="w-full text-center text-xs font-bold text-[#1a1a1a]/60 uppercase tracking-widest py-2 hover:underline cursor-pointer"
-          >
-            restore purchases
-          </button>
-        </div>
-      </div>
-    );
+    // Default to summary screen
+    return null;
   };
 
   const renderWelcomeSec = () => {

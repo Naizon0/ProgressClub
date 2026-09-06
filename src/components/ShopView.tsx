@@ -1,42 +1,25 @@
 import React, { useState } from 'react';
-import { AppState, CharacterInfo, RoomInfo } from '../types';
+import { AppState, CharacterInfo } from '../types';
 import { CHARACTERS, ROOMS, ROOM_ITEMS } from '../data';
 import CrewCharacter from './CrewCharacter';
 import {
-  Crown,
   Sparkles,
-  Gem,
-  Trophy,
   Star,
-  Shield,
   Gamepad,
-  Coffee,
-  Heart,
-  Zap,
-  Flame,
-  Snowflake,
-  Moon,
-  Sprout,
   ArrowLeft,
   Check,
   Compass,
   Info,
-  Smile,
-  ChevronRight
+  Sprout
 } from 'lucide-react';
 
 interface ShopViewProps {
   state: AppState;
-  onJoinExecutive: () => void;
   onPurchaseCharacterBix: (id: string, costBix: number) => void;
-  onPurchaseCharacterCash: (id: string) => void;
   onPurchaseRoomBix: (id: string, costBix: number) => void;
-  onPurchaseRoomCash: (id: string) => void;
-  onBuyBundleCharacters: (isBix: boolean) => void;
-  onBuyBundleRooms: (isBix: boolean) => void;
-  onGiveTip: (amount: number) => void;
+  onBuyBundleCharacters: () => void;
+  onBuyBundleRooms: () => void;
   onPurchaseRoomItemBix: (id: string, costBix: number) => void;
-  onPurchaseRoomItemCash: (id: string) => void;
   onToggleRoomItem: (id: string) => void;
 }
 
@@ -214,16 +197,11 @@ const ITEM_EXTRAS: Record<string, {
 
 export const ShopView: React.FC<ShopViewProps> = ({
   state,
-  onJoinExecutive,
   onPurchaseCharacterBix,
-  onPurchaseCharacterCash,
   onPurchaseRoomBix,
-  onPurchaseRoomCash,
   onBuyBundleCharacters,
   onBuyBundleRooms,
-  onGiveTip,
   onPurchaseRoomItemBix,
-  onPurchaseRoomItemCash,
   onToggleRoomItem,
 }) => {
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterInfo | null>(null);
@@ -240,16 +218,13 @@ export const ShopView: React.FC<ShopViewProps> = ({
 
   const detailPoses: Array<'idle' | 'typing' | 'celebrating'> = ['idle', 'typing', 'celebrating'];
 
-  // Tip actions
-  const handleTip = (amount: number, label: string) => {
-    onGiveTip(amount);
-    alert(`Mock Transaction: Thank you so much for supporting the club with "${label}" ($${amount})! Your support keeps us ad-free.`);
-  };
-
   const isCharacterOwned = (id: string) => state.ownedCharacters.includes(id);
   const isRoomOwned = (id: string) => state.ownedRooms.includes(id);
   const isItemOwned = (id: string) => (state.ownedItems || []).includes(id);
   const isItemEquipped = (id: string) => (state.equippedItems || []).includes(id);
+
+  const unownedRooms = ROOMS.filter(r => !isRoomOwned(r.id));
+  const unownedCharacters = CHARACTERS.filter(c => !isCharacterOwned(c.id));
 
   return (
     <div className="space-y-10 w-full max-w-md mx-auto relative pb-24">
@@ -257,7 +232,7 @@ export const ShopView: React.FC<ShopViewProps> = ({
       <div className="bg-[#22c55e]/10 border-2 border-[#22c55e] p-4 rounded-xl flex justify-between items-center text-sm font-extrabold text-[#0a0a0a] shadow-[3px_3px_0px_0px_rgba(34,197,94,1)]">
         <div className="flex items-center space-x-2">
           <span className="inline-flex h-3 w-3 rounded-full bg-[#22c55e] animate-ping" />
-          <span className="tracking-wider uppercase text-xs">CLUB BALANCE SHEET:</span>
+          <span className="tracking-wider uppercase text-xs">YOUR EARNED BALANCE:</span>
         </div>
         <div className="flex items-center space-x-1.5 bg-white border border-[#22c55e] px-3 py-1 rounded-lg">
           <span className="text-base text-[#22c55e] font-black">🪙 {state.bixBalance}</span>
@@ -265,99 +240,18 @@ export const ShopView: React.FC<ShopViewProps> = ({
         </div>
       </div>
 
-      {/* SECTION 1: EXECUTIVE TIER (Dramatically made premium) */}
-      <div className="bg-white border-4 border-[#2a2a2a] rounded-2xl p-6.5 space-y-5 shadow-[6px_6px_0px_0px_rgba(10,10,10,1)] relative overflow-hidden transition-all hover:translate-x-px hover:translate-y-px hover:shadow-[4px_4px_0px_0px_rgba(10,10,10,1)]">
-        {/* Shiny corner badge */}
-        <div className="absolute -right-12 -top-4 bg-amber-400 text-stone-900 text-[10px] font-black py-2.5 px-12 rotate-45 uppercase border-b-2 border-stone-900 tracking-widest text-center shadow-sm">
-          98% JOIN
+      {/* Rewards info banner */}
+      <div className="bg-white border-2 border-[#2a2a2a] rounded-2xl p-4.5 space-y-2 shadow-[4px_4px_0px_0px_rgba(10,10,10,1)]">
+        <div className="flex items-center space-x-2">
+          <Sparkles className="h-4 w-4 text-[#22c55e]" />
+          <h2 className="text-xs font-black tracking-widest text-[#0a0a0a] uppercase">100% EARNED REWARDS</h2>
         </div>
-
-        <div className="bg-gradient-to-r from-stone-900 via-stone-850 to-black text-[#22c55e] p-3 text-center rounded-xl border-2 border-stone-800 flex items-center justify-center space-x-2.5 shadow-sm">
-          <Crown className="text-amber-400 h-5 w-5 fill-amber-400 animate-pulse shrink-0" />
-          <h2 className="text-[12px] font-black tracking-widest uppercase">THE EXECUTIVE SUITE CLUB</h2>
-        </div>
-        <p className="text-xs text-[#1a1a1a]/85 leading-relaxed text-center px-1 font-medium">
-          Ready to supercharge, <strong className="text-stone-900 font-extrabold">@{state.username || 'cadet'}</strong>? The Executive tier unlocks absolute speed, limitless rooms, and elite metrics.
+        <p className="text-xs text-[#1a1a1a]/80 leading-relaxed font-medium">
+          Every workspace, desk toy companion, and cozy room decor in Progress Club is <strong>100% free</strong> and unlocked exclusively with <strong>Bix earned from your focus sessions</strong>.
         </p>
-
-        {/* Option comparison */}
-        <div className="grid grid-cols-2 gap-3.5 pt-1">
-          <div className="bg-stone-50/60 border-2 border-[#2a2a2a] p-4 rounded-xl flex flex-col justify-between shadow-[2px_2px_0px_0px_rgba(10,10,10,0.5)]">
-            <div>
-              <h3 className="text-[10px] font-black uppercase text-[#1a1a1a]/40 tracking-wider mb-1">Standard Pass</h3>
-              <p className="text-xl font-black text-stone-800">FREE</p>
-              <ul className="text-[10px] space-y-1.5 mt-3 font-semibold text-[#1a1a1a]/70">
-                <li className="flex items-center space-x-1">
-                  <span className="text-stone-400">⚡</span>
-                  <span>1.0x Bix Speed</span>
-                </li>
-                <li className="flex items-center space-x-1">
-                  <span className="text-stone-400">📂</span>
-                  <span>Basic Clubhouse</span>
-                </li>
-                <li className="flex items-center space-x-1">
-                  <span className="text-stone-400">🕒</span>
-                  <span>Standard Timer</span>
-                </li>
-              </ul>
-            </div>
-            <p className="text-[9px] text-stone-400 font-medium italic mt-4">included by default</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-amber-50 to-yellow-100/30 border-2 border-amber-500 border-l-8 p-4 rounded-xl flex flex-col justify-between shadow-[3px_3px_0px_0px_rgba(245,158,11,0.2)]">
-            <div>
-              <div className="flex items-center space-x-1 mb-1">
-                <Crown className="text-amber-500 h-3 w-3 fill-amber-500" />
-                <h3 className="text-[10px] font-black uppercase text-amber-600 tracking-wider">Executive</h3>
-              </div>
-              <p className="text-xl font-black text-stone-900">$5.50 <span className="text-[10px] font-bold text-[#1a1a1a]/60">/lifetime</span></p>
-              <ul className="text-[10px] space-y-1.5 mt-3 font-extrabold text-stone-900">
-                <li className="flex items-center space-x-1">
-                  <span className="text-emerald-500 shrink-0">✓</span>
-                  <span>2.0x Double Bix Earning</span>
-                </li>
-                <li className="flex items-center space-x-1">
-                  <span className="text-emerald-500 shrink-0">✓</span>
-                  <span>Dozens of premium rooms</span>
-                </li>
-                <li className="flex items-center space-x-1">
-                  <span className="text-emerald-500 shrink-0">✓</span>
-                  <span>Deep Space Zone</span>
-                </li>
-              </ul>
-            </div>
-            {state.isExecutive ? (
-              <span className="text-[10px] text-center bg-[#22c55e]/20 text-[#22c55e] border-2 border-[#22c55e] font-black py-1 rounded-lg mt-3 uppercase tracking-wider">
-                👑 ACTIVE MEMBER
-              </span>
-            ) : (
-              <button
-                id="join-exec-suite-btn"
-                onClick={onJoinExecutive}
-                className="w-full mt-3 py-1.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-500 hover:to-orange-500 text-[#0a0a0a] text-[10px] font-black uppercase tracking-wider rounded-lg border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(10,10,10,1)] transform active:translate-y-px active:shadow-none transition-all cursor-pointer"
-              >
-                Join Suite
-              </button>
-            )}
-          </div>
-        </div>
-
-        {!state.isExecutive && (
-          <button
-            id="lifetime-exec-pass-btn"
-            onClick={() => {
-              onJoinExecutive();
-              alert("Mock Purchase: You successfully purchased the Lifetime Club Pass for $5.50! Welcome aboard for life.");
-            }}
-            className="w-full py-3.5 bg-gradient-to-r from-[#1e1b4b] via-[#311042] to-[#2e1065] text-amber-300 border-2 border-[#2a2a2a] text-[11px] font-black uppercase tracking-widest rounded-xl hover:opacity-95 shadow-[4px_4px_0px_0px_rgba(10,10,10,1)] hover:shadow-[3px_3px_0px_0px_rgba(10,10,10,1)] active:translate-y-px transition-all cursor-pointer flex items-center justify-center space-x-2"
-          >
-            <Crown className="h-4 w-4 fill-amber-300 animate-bounce" />
-            <span>LIFETIME CLUB PASS - ONLY $5.50 👑</span>
-          </button>
-        )}
       </div>
 
-      {/* SECTION 2: OFFICE ROOMS */}
+      {/* SECTION 1: WORKSPACE ROOMS */}
       <div className="space-y-4">
         <div className="flex items-center space-x-2 border-b-2 border-stone-200 pb-2">
           <Compass className="h-5 w-5 text-stone-800 text-left shrink-0" />
@@ -365,32 +259,25 @@ export const ShopView: React.FC<ShopViewProps> = ({
         </div>
 
         {/* Room Bundle Banner */}
-        {!state.isExecutive && (
+        {unownedRooms.length > 0 && (
           <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 border-2 border-[#2a2a2a] rounded-xl overflow-hidden flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(10,10,10,1)]">
             <div className="bg-[#22c55e] p-3 text-center border-b-2 border-[#2a2a2a] relative">
-              <span className="absolute top-1 left-2 bg-black uppercase text-white font-serif italic text-[8px] font-black tracking-widest px-1.5 rounded">40% OFF</span>
+              <span className="absolute top-1 left-2 bg-black uppercase text-white font-serif italic text-[8px] font-black tracking-widest px-1.5 rounded">BUNDLE SAVINGS</span>
               <h3 className="text-xs font-black text-[#0a0a0a] uppercase tracking-widest">WORLD ATLAS ROOM BUNDLE</h3>
-              <p className="text-[10px] font-bold text-[#0a0a0a]/80">Unlocks Rooftop, Diner, Dojo, Cabin, and ultra penthouse</p>
+              <p className="text-[10px] font-bold text-[#0a0a0a]/80">Unlocks all 8 dynamic workspace environments at once</p>
             </div>
-            <div className="p-3 bg-white flex justify-between gap-3">
-              <button
-                id="room-bundle-cash"
-                onClick={() => onBuyBundleRooms(false)}
-                className="flex-1 py-2 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-[#0a0a0a] border-2 border-stone-900 text-[10px] font-black uppercase rounded-lg hover:shadow-[2px_2px_0px_0px_rgba(10,10,10,1)] shadow transition-all active:translate-y-px cursor-pointer"
-              >
-                Bundle Cash: $12 👑
-              </button>
+            <div className="p-3 bg-white flex justify-center">
               <button
                 id="room-bundle-bix"
-                onClick={() => onBuyBundleRooms(true)}
+                onClick={onBuyBundleRooms}
                 disabled={state.bixBalance < 4800}
-                className={`flex-1 py-1.5 bg-[#22c55e] text-[#0a0a0a] text-[10px] font-black uppercase rounded-lg border-2 border-stone-900 ${
+                className={`w-full py-2.5 bg-[#22c55e] text-[#0a0a0a] text-xs font-black uppercase rounded-lg border-2 border-stone-900 ${
                   state.bixBalance < 4800
                     ? 'opacity-40 cursor-not-allowed'
                     : 'hover:bg-emerald-400 hover:shadow-[2px_2px_0px_0px_rgba(10,10,10,1)] transition-all cursor-pointer'
                 }`}
               >
-                Spend: 4800 Bix
+                Unlock All Workspaces • 4,800 Bix 🪙
               </button>
             </div>
           </div>
@@ -400,7 +287,6 @@ export const ShopView: React.FC<ShopViewProps> = ({
         <div className="space-y-4">
           {ROOMS.map((room) => {
             const owned = isRoomOwned(room.id);
-            const isExecOnly = room.exclusiveExecutive;
             const extra = ROOM_EXTRAS[room.id] || {
               perk: 'Focus upgrade.',
               theme: 'Custom theme',
@@ -421,31 +307,21 @@ export const ShopView: React.FC<ShopViewProps> = ({
                       <h4 className="text-sm font-black text-[#0a0a0a] uppercase tracking-wide">{room.name}</h4>
                       {owned ? (
                         <span className="text-[8px] font-black text-[#22c55e] bg-[#22c55e]/10 border-2 border-[#22c55e] px-1.5 rounded-md uppercase">Installed</span>
-                      ) : isExecOnly ? (
-                        <span className="text-[8px] font-black text-rose-500 bg-rose-50 border-2 border-rose-300 px-1.5 rounded-md uppercase flex items-center space-x-0.5">
-                          <Crown className="h-2 w-2 fill-rose-500" />
-                          <span>VIP Available</span>
-                        </span>
                       ) : (
                         <span className="text-[8px] font-bold text-stone-500 bg-stone-100 border border-stone-250 px-1.5 rounded-md uppercase">Available</span>
                       )}
                     </div>
                     <p className="text-[10px] text-stone-400 font-serif font-black italic tracking-wider">{extra.theme}</p>
                     <p className="text-[11px] text-[#1a1a1a]/85 leading-relaxed font-medium">{room.copy}</p>
-                    {isExecOnly && (
-                      <p className="text-[9px] font-bold text-rose-600 bg-rose-500/10 border border-rose-300/40 p-1 rounded-md leading-none inline-flex items-center space-x-1 mt-1">
-                        <Crown className="h-2.5 w-2.5 fill-rose-500 text-rose-500 animate-pulse" />
-                        <span>FREE WITH EXECUTIVE CLUB!</span>
-                      </p>
-                    )}
                   </div>
 
                   <div className="text-right">
                     {owned ? (
                       <Check className="h-6 w-6 text-[#22c55e] ml-auto stroke-[3]" />
                     ) : (
-                      <span className="inline-block bg-white text-[11px] font-black border-2 border-stone-900 px-2.5 py-0.5 rounded-full select-none">
-                        {`$${room.priceUSD.toFixed(2)}`}
+                      <span className="inline-flex items-center gap-1 bg-white text-[11px] font-black border-2 border-stone-900 px-2.5 py-0.5 rounded-full select-none">
+                        <span>🪙</span>
+                        <span>{room.priceBix} Bix</span>
                       </span>
                     )}
                   </div>
@@ -492,31 +368,22 @@ export const ShopView: React.FC<ShopViewProps> = ({
                 {!owned && (
                   <div className="border-t border-stone-200/60 pt-2.5 flex items-center justify-between">
                     <div className="text-[10px] font-black text-[#22c55e] flex items-center space-x-1.5">
-                      <span>🪙 or unlock for</span>
+                      <span>🪙 Cost:</span>
                       <strong className="bg-[#22c55e]/10 px-1.5 py-0.5 rounded text-xs border border-[#22c55e]/40">{`${room.priceBix} Bix`}</strong>
                     </div>
 
-                    <div className="w-1/2 flex justify-end space-x-2">
-                      <button
-                        id={`rect-buy-cash-${room.id}`}
-                        onClick={() => onPurchaseRoomCash(room.id)}
-                        className="py-1 px-2.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-stone-900 border-2 border-stone-900 text-[9px] uppercase font-black rounded-lg hover:shadow-[2px_2px_0px_0px_rgba(10,10,10,1)] transition-all cursor-pointer"
-                      >
-                        Buy ${room.priceUSD} 👑
-                      </button>
-                      <button
-                        id={`rect-buy-bix-${room.id}`}
-                        onClick={() => onPurchaseRoomBix(room.id, room.priceBix)}
-                        disabled={state.bixBalance < room.priceBix}
-                        className={`py-1 px-2.5 bg-[#22c55e] text-[#0a0a0a] text-[9px] uppercase font-black border-2 border-stone-900 rounded-lg ${
-                          state.bixBalance < room.priceBix
-                            ? 'opacity-30 cursor-not-allowed'
-                            : 'hover:bg-emerald-400 hover:shadow-[2px_2px_0px_0px_rgba(10,10,10,1)] transition-all cursor-pointer'
-                        }`}
-                      >
-                        {room.priceBix} Bix
-                      </button>
-                    </div>
+                    <button
+                      id={`rect-buy-bix-${room.id}`}
+                      onClick={() => onPurchaseRoomBix(room.id, room.priceBix)}
+                      disabled={state.bixBalance < room.priceBix}
+                      className={`py-1.5 px-4 bg-[#22c55e] text-[#0a0a0a] text-[10px] uppercase font-black border-2 border-stone-900 rounded-lg ${
+                        state.bixBalance < room.priceBix
+                          ? 'opacity-30 cursor-not-allowed'
+                          : 'hover:bg-emerald-400 hover:shadow-[2px_2px_0px_0px_rgba(10,10,10,1)] transition-all cursor-pointer'
+                      }`}
+                    >
+                      Unlock Workspace
+                    </button>
                   </div>
                 )}
               </div>
@@ -525,7 +392,7 @@ export const ShopView: React.FC<ShopViewProps> = ({
         </div>
       </div>
 
-      {/* SECTION 2.5: ROOM DECOR & UPGRADES */}
+      {/* SECTION 2: ROOM DECOR & UPGRADES */}
       <div className="space-y-4">
         <div className="flex items-center space-x-2 border-b-2 border-stone-200 pb-2">
           <Sprout className="h-5 w-5 text-stone-800 text-left shrink-0" />
@@ -569,7 +436,7 @@ export const ShopView: React.FC<ShopViewProps> = ({
 
                     {!owned && (
                       <div className="text-[10px] font-extrabold text-stone-600 pt-1">
-                        Cash: <strong className="text-stone-900">${item.priceUSD.toFixed(2)}</strong> | Bix: <span className="text-[#22c55e] font-black">🪙 {item.priceBix}</span>
+                        Price: <span className="text-[#22c55e] font-black">🪙 {item.priceBix} Bix</span>
                       </div>
                     )}
                   </div>
@@ -589,27 +456,18 @@ export const ShopView: React.FC<ShopViewProps> = ({
                       {equipped ? '✓ Equipped' : 'Unequipped'}
                     </button>
                   ) : (
-                    <div className="flex flex-col space-y-1 w-full">
-                      <button
-                        id={`rect-buy-item-cash-${item.id}`}
-                        onClick={() => onPurchaseRoomItemCash(item.id)}
-                        className="py-1 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-stone-900 border-2 border-stone-900 text-[9px] uppercase font-black rounded-lg hover:shadow-[1px_1px_0px_0px_rgba(10,10,10,1)] transition-all cursor-pointer"
-                      >
-                        Buy ${item.priceUSD} 👑
-                      </button>
-                      <button
-                        id={`rect-buy-item-bix-${item.id}`}
-                        onClick={() => onPurchaseRoomItemBix(item.id, item.priceBix)}
-                        disabled={state.bixBalance < item.priceBix}
-                        className={`py-1 bg-[#22c55e] text-stone-900 text-[9px] uppercase font-black border-2 border-stone-900 rounded-lg ${
-                          state.bixBalance < item.priceBix
-                            ? 'opacity-35 cursor-not-allowed'
-                            : 'hover:bg-emerald-400 hover:shadow-[1px_1px_0px_0px_rgba(10,10,10,1)] transition-all cursor-pointer'
-                        }`}
-                      >
-                        {item.priceBix} Bix
-                      </button>
-                    </div>
+                    <button
+                      id={`rect-buy-item-bix-${item.id}`}
+                      onClick={() => onPurchaseRoomItemBix(item.id, item.priceBix)}
+                      disabled={state.bixBalance < item.priceBix}
+                      className={`py-2 px-3 bg-[#22c55e] text-stone-900 text-[10px] uppercase font-black border-2 border-stone-900 rounded-lg ${
+                        state.bixBalance < item.priceBix
+                          ? 'opacity-35 cursor-not-allowed'
+                          : 'hover:bg-emerald-400 hover:shadow-[1px_1px_0px_0px_rgba(10,10,10,1)] transition-all cursor-pointer'
+                      }`}
+                    >
+                      {item.priceBix} Bix
+                    </button>
                   )}
                 </div>
               </div>
@@ -618,51 +476,45 @@ export const ShopView: React.FC<ShopViewProps> = ({
         </div>
       </div>
 
-      {/* SECTION 3: YOUR CREW (Styled as premium Collectible Toy box grid!) */}
+      {/* SECTION 3: YOUR CREW */}
       <div className="space-y-4">
         <div className="flex items-center space-x-2 border-b-2 border-stone-200 pb-2">
           <Gamepad className="h-5 w-5 text-stone-800 text-left shrink-0" />
-          <h2 className="text-xs font-black tracking-widest text-[#0a0a0a] uppercase">COLLECT YOUR DESGINE-TOY CREW</h2>
+          <h2 className="text-xs font-black tracking-widest text-[#0a0a0a] uppercase">COLLECT YOUR DESK CREW</h2>
         </div>
         <p className="text-xs text-[#1a1a1a]/70 font-medium leading-relaxed">
           Each companion features an <strong>interactive stat grid</strong> and specialized <strong>concentration aura.</strong> Collect all 8 to complete your master desktop roster!
         </p>
 
         {/* Bundle Banner */}
-        <div className="bg-gradient-to-br from-[#fff7ed] to-orange-100/30 border-2 border-[#2a2a2a] rounded-xl overflow-hidden flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(10,10,10,1)]">
-          <div className="bg-[#22c55e] p-3 text-center border-b-2 border-[#2a2a2a] relative">
-            <span className="absolute top-1 left-2 bg-black uppercase text-white font-serif italic text-[8px] font-black tracking-widest px-1.5 rounded">ULTRA SELECTION</span>
-            <h3 className="text-xs font-black text-[#0a0a0a] uppercase tracking-widest">COMPLETE ROSTER BUNDLE</h3>
-            <p className="text-[10px] font-semibold text-[#0a0a0a]/85">Unlocks Blaze, Frost, Dusk, Ember, Mantis, Volt, and Monument instantly!</p>
+        {unownedCharacters.length > 0 && (
+          <div className="bg-gradient-to-br from-[#fff7ed] to-orange-100/30 border-2 border-[#2a2a2a] rounded-xl overflow-hidden flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(10,10,10,1)]">
+            <div className="bg-[#22c55e] p-3 text-center border-b-2 border-[#2a2a2a] relative">
+              <span className="absolute top-1 left-2 bg-black uppercase text-white font-serif italic text-[8px] font-black tracking-widest px-1.5 rounded">ROSTER BUNDLE</span>
+              <h3 className="text-xs font-black text-[#0a0a0a] uppercase tracking-widest">COMPLETE ROSTER BUNDLE</h3>
+              <p className="text-[10px] font-semibold text-[#0a0a0a]/85">Unlocks Blaze, Frost, Dusk, Ember, Mantis, Volt, and Monument together!</p>
+            </div>
+            <div className="p-3 bg-white flex justify-center">
+              <button
+                id="crew-bundle-bix"
+                onClick={onBuyBundleCharacters}
+                disabled={state.bixBalance < 7200}
+                className={`w-full py-2.5 bg-[#22c55e] text-[#0a0a0a] text-xs font-black uppercase rounded-lg border-2 border-stone-900 ${
+                  state.bixBalance < 7200
+                    ? 'opacity-40 cursor-not-allowed'
+                    : 'hover:bg-emerald-400 hover:shadow-[2px_2px_0px_0px_rgba(10,10,10,1)] transition-all cursor-pointer'
+                }`}
+              >
+                Unlock Entire Roster • 7,200 Bix 🪙
+              </button>
+            </div>
           </div>
-          <div className="p-3 bg-white flex justify-between gap-3">
-            <button
-              id="crew-bundle-cash"
-              onClick={() => onBuyBundleCharacters(false)}
-              className="flex-1 py-1.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-[#0a0a0a] border-2 border-stone-900 text-[10px] font-black uppercase rounded-lg hover:shadow-[2px_2px_0px_0px_rgba(10,10,10,1)] shadow transition-all active:translate-y-px cursor-pointer"
-            >
-              Cash Pass: $18 👑
-            </button>
-            <button
-              id="crew-bundle-bix"
-              onClick={() => onBuyBundleCharacters(true)}
-              disabled={state.bixBalance < 7200}
-              className={`flex-1 py-1.5 bg-[#22c55e] text-[#0a0a0a] text-[10px] font-black uppercase rounded-lg border-2 border-stone-900 ${
-                state.bixBalance < 7200
-                  ? 'opacity-40 cursor-not-allowed'
-                  : 'hover:bg-emerald-400 hover:shadow-[2px_2px_0px_0px_rgba(10,10,10,1)] transition-all cursor-pointer'
-              }`}
-            >
-              Spend: 7200 Bix
-            </button>
-          </div>
-        </div>
+        )}
 
         {/* 2-Column Grid */}
         <div className="grid grid-cols-2 gap-3.5 pt-1">
           {CHARACTERS.map((char) => {
             const owned = isCharacterOwned(char.id);
-            const isMonument = char.id === 'monument';
             const extra = CHARACTER_EXTRAS[char.id] || {
               rarity: 'COLLECTIBLE',
               perk: 'Focus companion.',
@@ -713,19 +565,9 @@ export const ShopView: React.FC<ShopViewProps> = ({
 
                 {/* Grid Item Prices */}
                 {!owned && (
-                  <div className="border-t border-[#eeeeee] pt-2 mt-2.5 flex flex-col space-y-0.5 text-[9px] font-black">
-                    <p className="text-[#0a0a0a] flex justify-between">
-                      <span>Buy Cash:</span>
-                      <strong className="text-stone-900">${char.priceUSD}</strong>
-                    </p>
-                    {isMonument ? (
-                      <p className="text-rose-500 font-serif italic text-right">No Item Bix</p>
-                    ) : (
-                      <p className="text-[#22c55e] flex justify-between">
-                        <span>Spend Bix:</span>
-                        <span>🪙 {char.priceBix}</span>
-                      </p>
-                    )}
+                  <div className="border-t border-[#eeeeee] pt-2 mt-2.5 flex justify-between items-center text-[9px] font-black text-[#22c55e]">
+                    <span>🪙 Unlock:</span>
+                    <strong className="text-[#22c55e]">{char.priceBix} Bix</strong>
                   </div>
                 )}
               </div>
@@ -734,45 +576,7 @@ export const ShopView: React.FC<ShopViewProps> = ({
         </div>
       </div>
 
-      {/* SECTION 4: TIP JAR (Warm cozy interactive block) */}
-      <div className="bg-white border-4 border-[#2a2a2a] rounded-2xl p-5 space-y-4 shadow-[4px_4px_0px_0px_rgba(10,10,10,1)] relative overflow-hidden">
-        <div className="absolute right-0 top-0 bg-stone-50/75 p-1 border-b-2 border-l-2 border-stone-900 rounded-bl-xl select-none">
-          ☕
-        </div>
-        <div className="flex items-center space-x-2 border-b border-stone-200 pb-1.5">
-          <Coffee className="h-5 w-5 text-amber-700 shrink-0" />
-          <h3 className="text-xs font-black tracking-widest text-[#0a0a0a] uppercase">SUPPORT THE CAFE ENGINEERS</h3>
-        </div>
-        <p className="text-[11px] text-[#1a1a1a]/80 leading-relaxed font-semibold">
-          Progress Club is made with immense love by a small team. Zero intrusive investors, zero annoying advertisements, just human builders focused on shipping cozy utility systems.
-        </p>
-
-        <div className="grid grid-cols-3 gap-2.5">
-          <button
-            id="tip-1"
-            onClick={() => handleTip(1, 'Buy us a coffee')}
-            className="py-3.5 border-2 border-stone-900 text-[10px] font-black uppercase rounded-xl bg-white hover:bg-stone-50 shadow-[2px_2px_0px_0px_rgba(10,10,10,1)] active:translate-y-px transition-all cursor-pointer"
-          >
-            $1 <br/> <span className="text-[8px] text-amber-700 font-medium">ESPRESSO ☕</span>
-          </button>
-          <button
-            id="tip-3"
-            onClick={() => handleTip(3, 'Buy us lunch')}
-            className="py-3.5 border-2 border-stone-900 text-[10px] font-black uppercase rounded-xl bg-white hover:bg-stone-50 shadow-[2px_2px_0px_0px_rgba(10,10,10,1)] active:translate-y-px transition-all cursor-pointer"
-          >
-            $3 <br/> <span className="text-[8px] text-indigo-705 font-medium">BENTO BOX 🍱</span>
-          </button>
-          <button
-            id="tip-5"
-            onClick={() => handleTip(5, "You're amazing")}
-            className="py-1 bg-[#22c55e] text-stone-900 text-[10px] font-black uppercase rounded-xl border-2 border-stone-900 shadow-[2px_2px_0px_0px_rgba(10,10,10,1)] hover:bg-emerald-400 active:translate-y-px transition-all cursor-pointer"
-          >
-            $5 <br/> <span className="text-[8px] text-stone-950 font-black">SUPERCHARGE 👑</span>
-          </button>
-        </div>
-      </div>
-
-      {/* FULL-SCREEN CHARACTER DETAILS MODAL - ULTRA DESIGNER INTERACTIVE SPEC SHEET */}
+      {/* FULL-SCREEN CHARACTER DETAILS MODAL */}
       {selectedCharacter && (() => {
         const extra = CHARACTER_EXTRAS[selectedCharacter.id] || {
           rarity: 'COLLECTIBLE',
@@ -793,7 +597,7 @@ export const ShopView: React.FC<ShopViewProps> = ({
                 className="inline-flex items-center space-x-1.5 text-stone-500 hover:text-black font-extrabold uppercase text-xs tracking-wider py-1 cursor-pointer"
               >
                 <ArrowLeft className="h-4 w-4 stroke-[3]" />
-                <span>&larr; BACK TO TOYROSTER</span>
+                <span>&larr; BACK TO ROSTER</span>
               </button>
 
               <div className="border-b-4 border-stone-900 pb-3">
@@ -816,7 +620,7 @@ export const ShopView: React.FC<ShopViewProps> = ({
               </div>
             </div>
 
-            {/* Cycling Animations Showcase Box - Gorgeous holographic box */}
+            {/* Cycling Animations Showcase Box */}
             <div className="my-6 bg-white border-4 border-stone-900 rounded-2xl p-5 flex flex-col items-center justify-center space-y-4.5 shadow-[5px_5px_0px_0px_rgba(10,10,10,1)] relative overflow-hidden bg-radial from-stone-50 to-stone-50/10">
               <div className="absolute top-2 left-3 text-[8.5px] font-black text-stone-300 uppercase tracking-widest select-none">
                 active visual motor render
@@ -914,41 +718,28 @@ export const ShopView: React.FC<ShopViewProps> = ({
               </div>
             </div>
 
-            {/* Transaction Selectors / Footer action block */}
+            {/* Footer action block */}
             <div className="space-y-3 pt-6">
               {isCharacterOwned(selectedCharacter.id) ? (
                 <div className="bg-emerald-50 border-2 border-[#22c55e] text-[#22c55e] p-4 rounded-xl text-center font-black text-xs uppercase tracking-widest shadow-sm">
-                  🎉 Buddy successfully registered on your focal crew desk roster!
+                  🎉 Buddy is equipped and ready on your roster!
                 </div>
               ) : (
-                <div className="space-y-3 flex flex-col w-full">
-                  <button
-                    id="welcome-char-modal-cash"
-                    onClick={() => {
-                      onPurchaseCharacterCash(selectedCharacter.id);
-                      setSelectedCharacter(null);
-                    }}
-                    className="w-full py-4.5 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 hover:from-amber-500 hover:to-orange-500 text-stone-950 text-xs font-black uppercase tracking-wider rounded-xl border-2 border-stone-900 shadow-[4px_4px_0px_0px_rgba(10,10,10,1)] active:translate-y-px transition-all cursor-pointer flex items-center justify-center space-x-1.5"
-                  >
-                    <span>Welcome {selectedCharacter.name}! (${selectedCharacter.priceUSD.toFixed(2)}) 👑</span>
-                  </button>
-                  
-                  {selectedCharacter.id !== 'monument' && (
-                    <button
-                      id="welcome-char-modal-bix"
-                      onClick={() => {
-                        onPurchaseCharacterBix(selectedCharacter.id, selectedCharacter.priceBix);
-                        setSelectedCharacter(null);
-                      }}
-                      disabled={state.bixBalance < selectedCharacter.priceBix}
-                      className={`w-full py-3.5 bg-white hover:bg-stone-50 text-stone-950 text-xs font-black uppercase tracking-wider rounded-xl border-2 border-stone-900 shadow-[3px_3px_0px_0px_rgba(10,10,10,1)] ${
-                        state.bixBalance < selectedCharacter.priceBix ? 'opacity-40 cursor-not-allowed shadow-none' : 'active:translate-y-px transition-all cursor-pointer'
-                      }`}
-                    >
-                      Spend {selectedCharacter.priceBix} Bix
-                    </button>
-                  )}
-                </div>
+                <button
+                  id="welcome-char-modal-bix"
+                  onClick={() => {
+                    onPurchaseCharacterBix(selectedCharacter.id, selectedCharacter.priceBix);
+                    setSelectedCharacter(null);
+                  }}
+                  disabled={state.bixBalance < selectedCharacter.priceBix}
+                  className={`w-full py-4 bg-[#22c55e] text-stone-950 text-xs font-black uppercase tracking-wider rounded-xl border-2 border-stone-900 shadow-[4px_4px_0px_0px_rgba(10,10,10,1)] ${
+                    state.bixBalance < selectedCharacter.priceBix
+                      ? 'opacity-40 cursor-not-allowed shadow-none'
+                      : 'hover:bg-emerald-400 active:translate-y-px transition-all cursor-pointer'
+                  }`}
+                >
+                  Unlock {selectedCharacter.name} • {selectedCharacter.priceBix} Bix 🪙
+                </button>
               )}
 
               <button
@@ -956,7 +747,7 @@ export const ShopView: React.FC<ShopViewProps> = ({
                 onClick={() => setSelectedCharacter(null)}
                 className="w-full text-center text-[10px] text-stone-400 hover:text-stone-900 uppercase font-black tracking-widest py-1.5 cursor-pointer"
               >
-                Let me browse more
+                Browse more items
               </button>
             </div>
           </div>

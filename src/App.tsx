@@ -32,6 +32,8 @@ import {
   Flame,
   AlertTriangle,
   Bell,
+  BellRing,
+  Volume2,
   Clock,
   Target,
   Crown,
@@ -41,6 +43,14 @@ import {
   Pin,
   Trash2,
 } from 'lucide-react';
+import {
+  isNotificationSupported,
+  getNotificationPermission,
+  requestNotificationPermission,
+  isAppNotOpen,
+  sendSessionDoneNotification,
+  playCompletionChime,
+} from './utils/notifications';
 
 // Helper: Get local Date string as YYYY-MM-DD
 function getLocalDateString(): string {
@@ -162,8 +172,15 @@ export default function App() {
   const [pendingChallengeLength, setPendingChallengeLength] = useState<ChallengeLength>(21);
   const [homeGoalInput, setHomeGoalInput] = useState('');
 
+  // Notification Permission State
+  const [notificationPermissionState, setNotificationPermissionState] = useState<string>(() => {
+    return getNotificationPermission();
+  });
+
   // Refs:
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const targetEndTimeRef = useRef<number | null>(null);
+  const timerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTriggeredNotificationDateRef = useRef<string>('');
 
   // Sync state to localStorage on every update
@@ -584,40 +601,118 @@ export default function App() {
     }, 400);
   };
 
-  // Timer Tick implementation
+  // Timer Tick implementation with background timestamp resilience
   const startTimer = () => {
     if (timerIsActive) return;
+
+    // Prompt for notification permission on user click gesture if still default
+    if (isNotificationSupported() && Notification.permission === 'default') {
+      requestNotificationPermission().then((granted) => {
+        setNotificationPermissionState(granted ? 'granted' : 'denied');
+        if (granted) {
+          saveState({
+            ...state,
+            settings: { ...state.settings, notificationsEnabled: true },
+          });
+        }
+      });
+    }
+
     setTimerIsActive(true);
     setTimerPose(focusActivity === 'exercise' ? 'exercising' : 'typing');
 
+    const totalSeconds = timerDuration * 60;
+    const targetEnd = Date.now() + totalSeconds * 1000;
+    targetEndTimeRef.current = targetEnd;
+
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    if (timerTimeoutRef.current) clearTimeout(timerTimeoutRef.current);
+
+    // Timeout fallback for exact completion even in throttled background tabs
+    timerTimeoutRef.current = setTimeout(() => {
+      if (targetEndTimeRef.current && Date.now() >= targetEndTimeRef.current) {
+        clearInterval(timerIntervalRef.current!);
+        targetEndTimeRef.current = null;
+        setTimerIsActive(false);
+        setTimeLeft(0);
+        handleSessionCompletion();
+      }
+    }, totalSeconds * 1000);
+
     timerIntervalRef.current = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerIntervalRef.current!);
-          setTimerIsActive(false);
-          handleSessionCompletion();
-          return 0;
+      if (!targetEndTimeRef.current) return;
+      const remainingMs = targetEndTimeRef.current - Date.now();
+      const remaining = Math.max(0, Math.ceil(remainingMs / 1000));
+
+      if (remaining <= 0) {
+        if (timerTimeoutRef.current) clearTimeout(timerTimeoutRef.current);
+        clearInterval(timerIntervalRef.current!);
+        targetEndTimeRef.current = null;
+        setTimerIsActive(false);
+        setTimeLeft(0);
+        handleSessionCompletion();
+        return;
+      }
+
+      setTimeLeft(remaining);
+
+      // Randomly alternate between stances for visual variety !
+      if (remaining % 12 === 0) {
+        if (focusActivity === 'exercise') {
+          setTimerPose('exercising'); // don't let them meditate, keep them exercising
+        } else {
+          setTimerPose((current) => (current === 'typing' ? 'focused' : 'typing'));
         }
-        // Randomly alternate between stances for visual variety !
-        if (prev % 12 === 0) {
-          if (focusActivity === 'exercise') {
-            setTimerPose('exercising'); // don't let them meditate, keep them exercising
-          } else {
-            setTimerPose((current) => (current === 'typing' ? 'focused' : 'typing'));
-          }
-        }
-        return prev - 1;
-      });
+      }
     }, 1000);
   };
 
   const stopTimer = () => {
     if (!timerIsActive) return;
-    clearInterval(timerIntervalRef.current!);
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    if (timerTimeoutRef.current) clearTimeout(timerTimeoutRef.current);
+    targetEndTimeRef.current = null;
     setTimerIsActive(false);
     setTimerPose('resting');
     setTimeLeft(timerDuration * 60);
+    document.title = 'Progress Club';
   };
+
+  // Sync timer countdown when tab visibility changes or window receives focus
+  useEffect(() => {
+    const handleVisibilityOrFocus = () => {
+      if (!timerIsActive || !targetEndTimeRef.current) return;
+      const remainingMs = targetEndTimeRef.current - Date.now();
+      const remaining = Math.max(0, Math.ceil(remainingMs / 1000));
+
+      if (remaining <= 0) {
+        if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+        if (timerTimeoutRef.current) clearTimeout(timerTimeoutRef.current);
+        targetEndTimeRef.current = null;
+        setTimerIsActive(false);
+        setTimeLeft(0);
+        handleSessionCompletion();
+      } else {
+        setTimeLeft(remaining);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityOrFocus);
+    window.addEventListener('focus', handleVisibilityOrFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityOrFocus);
+      window.removeEventListener('focus', handleVisibilityOrFocus);
+    };
+  }, [timerIsActive, timerDuration]);
+
+  // Update browser tab title during active focus
+  useEffect(() => {
+    if (timerIsActive) {
+      document.title = `${formatTimeStr(timeLeft)} • Progress Club Focus`;
+    } else {
+      document.title = 'Progress Club';
+    }
+  }, [timerIsActive, timeLeft]);
 
   // Compute stats helper definitions
   const todayLocalDateStr = getLocalDateString();
@@ -687,6 +782,18 @@ export default function App() {
 
     saveState(updatedState);
 
+    // If user does not have the app open/focused, trigger system desktop/mobile notification!
+    // Also plays a pleasing audio chime to alert user even if window is occluded.
+    sendSessionDoneNotification({
+      username: state.username,
+      minutes: minutesFocused,
+      bixEarned: bixEarned,
+      characterName: state.currentActiveCharacter,
+      force: isAppNotOpen(),
+    });
+
+    document.title = '🎯 Session Complete! • Progress Club';
+
     // Pick a random journaling question from the pool
     const qIndex = Math.floor(Math.random() * JOURNAL_QUESTIONS.length);
     setCurrentJournalQuestion(JOURNAL_QUESTIONS[qIndex]);
@@ -747,7 +854,7 @@ export default function App() {
     setActiveOverlay('day-complete');
   };
 
-  // Purchase Actions
+  // Reward / Unlock Actions (100% In-Game Bix Currency)
   const handlePurchaseCharacterBix = (charId: string, costBix: number) => {
     if (state.bixBalance < costBix) return;
     const updated: AppState = {
@@ -757,17 +864,6 @@ export default function App() {
       currentActiveCharacter: charId, // Auto-equip
     };
     saveState(updated);
-    alert(`Mock Transaction: ${charId.toUpperCase()} equiped and added to your crew space! spent ${costBix} Bix.`);
-  };
-
-  const handlePurchaseCharacterCash = (charId: string) => {
-    const updated: AppState = {
-      ...state,
-      ownedCharacters: [...state.ownedCharacters, charId],
-      currentActiveCharacter: charId, // Auto-equip
-    };
-    saveState(updated);
-    alert(`Mock Transaction: ${charId.toUpperCase()} equipped and added to your crew space! Thank you for purchasing.`);
   };
 
   const handlePurchaseRoomBix = (roomId: string, costBix: number) => {
@@ -779,17 +875,6 @@ export default function App() {
       currentRoom: roomId, // Auto-equip
     };
     saveState(updated);
-    alert(`Mock Transaction: ${roomId.toUpperCase()} workspace is now yours! equipped in your studio.`);
-  };
-
-  const handlePurchaseRoomCash = (roomId: string) => {
-    const updated: AppState = {
-      ...state,
-      ownedRooms: [...state.ownedRooms, roomId],
-      currentRoom: roomId, // Auto-equip
-    };
-    saveState(updated);
-    alert(`Mock Transaction: ${roomId.toUpperCase()} workspace is now yours! equipped in your studio.`);
   };
 
   const handlePurchaseRoomItemBix = (itemId: string, costBix: number) => {
@@ -803,19 +888,6 @@ export default function App() {
       equippedItems: [...currentEquipped, itemId],
     };
     saveState(updated);
-    alert(`Mock Transaction: ${itemId.replace('-', ' ').toUpperCase()} purchased and equipped in your room!`);
-  };
-
-  const handlePurchaseRoomItemCash = (itemId: string) => {
-    const currentOwned = state.ownedItems || [];
-    const currentEquipped = state.equippedItems || [];
-    const updated: AppState = {
-      ...state,
-      ownedItems: [...currentOwned, itemId],
-      equippedItems: [...currentEquipped, itemId],
-    };
-    saveState(updated);
-    alert(`Mock Transaction: ${itemId.replace('-', ' ').toUpperCase()} purchased and equipped in your room!`);
   };
 
   const handleToggleRoomItem = (itemId: string) => {
@@ -890,86 +962,26 @@ export default function App() {
     saveState(updated);
   };
 
-  const handleJoinExecutive = () => {
-    const candidates = ROOMS.filter((r) => r.id !== 'deepspace' && !state.ownedRooms.includes(r.id));
-    
-    let bixReward = 0;
-    let unlockedRoomNames: string[] = [];
-    let newOwnedRooms = Array.from(new Set([...state.ownedRooms, 'deepspace']));
-    
-    if (candidates.length >= 3) {
-      const shuffled = [...candidates].sort(() => 0.5 - Math.random());
-      const selected = shuffled.slice(0, 3);
-      for (const r of selected) {
-        newOwnedRooms.push(r.id);
-        unlockedRoomNames.push(r.name);
-      }
-      newOwnedRooms = Array.from(new Set(newOwnedRooms));
-    } else {
-      bixReward = 1000;
-    }
-    
+  const handleBuyBundleCharacters = () => {
+    if (state.bixBalance < 7200) return;
+    const charIds = CHARACTERS.map(c => c.id);
     const updated: AppState = {
       ...state,
-      isExecutive: true,
-      subscriptionPlan: 'monthly',
-      ownedRooms: newOwnedRooms,
-      bixBalance: state.bixBalance + bixReward,
+      bixBalance: state.bixBalance - 7200,
+      ownedCharacters: Array.from(new Set([...state.ownedCharacters, ...charIds])),
     };
-    
     saveState(updated);
-    
-    const rewardMsg = bixReward > 0
-      ? `Additionally, you received a bonus of 1,000 Bix because you already own almost all rooms!`
-      : `Additionally, you unlocked 3 random bonus rooms: ${unlockedRoomNames.join(', ')}!`;
-      
-    alert(`Mock Transaction: Welcome to the Executive Suite! You now earn 2x Bix, have unlocked the VIP Deep Space workspace suite for free, and have lifetime access for $5.50!\n\n${rewardMsg}`);
   };
 
-  const handleBuyBundleCharacters = (isBix: boolean) => {
-    const charIds = CHARACTERS.map(c => c.id);
-    if (isBix) {
-      if (state.bixBalance < 7200) return;
-      const updated: AppState = {
-        ...state,
-        bixBalance: state.bixBalance - 7200,
-        ownedCharacters: Array.from(new Set([...state.ownedCharacters, ...charIds])),
-      };
-      saveState(updated);
-      alert("Mock Transaction: Crew Bundle Unlocked using Bix! All 8 friends are ready to study.");
-    } else {
-      const updated: AppState = {
-        ...state,
-        ownedCharacters: Array.from(new Set([...state.ownedCharacters, ...charIds])),
-      };
-      saveState(updated);
-      alert("Mock Transaction: Crew Bundle Unlocked using Cash ($18)! Thank you for supporting Progress Club.");
-    }
-  };
-
-  const handleBuyBundleRooms = (isBix: boolean) => {
+  const handleBuyBundleRooms = () => {
+    if (state.bixBalance < 4800) return;
     const roomIds = ROOMS.map(r => r.id);
-    if (isBix) {
-      if (state.bixBalance < 4800) return;
-      const updated: AppState = {
-        ...state,
-        bixBalance: state.bixBalance - 4800,
-        ownedRooms: Array.from(new Set([...state.ownedRooms, ...roomIds])),
-      };
-      saveState(updated);
-      alert("Mock Transaction: Workspace Suite Bundle Unlocked with Bix! All spaces equipped.");
-    } else {
-      const updated: AppState = {
-        ...state,
-        ownedRooms: Array.from(new Set([...state.ownedRooms, ...roomIds])),
-      };
-      saveState(updated);
-      alert("Mock Transaction: Workspace Suite Bundle Unlocked with Cash ($12)! All spaces equipped.");
-    }
-  };
-
-  const handleGiveTip = (amount: number) => {
-    // TIP does not subtract Bix, it is real-money thank you trigger
+    const updated: AppState = {
+      ...state,
+      bixBalance: state.bixBalance - 4800,
+      ownedRooms: Array.from(new Set([...state.ownedRooms, ...roomIds])),
+    };
+    saveState(updated);
   };
 
   // Convert timer remaining seconds to MM:SS string
@@ -1066,7 +1078,7 @@ export default function App() {
       try {
         new Notification(title, {
           body,
-          icon: '/favicon.ico',
+          icon: '/icon.svg',
         });
       } catch (e) {}
     }
@@ -1077,15 +1089,16 @@ export default function App() {
   };
 
   const handleRequestNotificationPermission = async () => {
-    if ('Notification' in window) {
+    if (isNotificationSupported()) {
       try {
         const perm = await Notification.requestPermission();
+        setNotificationPermissionState(perm);
         if (perm === 'granted') {
           saveState({
             ...state,
             settings: { ...state.settings, notificationsEnabled: true },
           });
-          sendSystemOrInAppNotification('Notifications Enabled', 'Daily focus triggers are now active.');
+          sendSystemOrInAppNotification('Notifications Enabled', 'Session completion and daily focus alerts are now active.');
         } else {
           saveState({
             ...state,
@@ -1096,6 +1109,36 @@ export default function App() {
     } else {
       sendSystemOrInAppNotification('Notice', 'Browser notifications not supported in this environment, using in-app triggers.');
     }
+  };
+
+  // Test trigger for session completion notification
+  const handleTestSessionCompleteAlert = async () => {
+    if (isNotificationSupported() && Notification.permission === 'default') {
+      const granted = await requestNotificationPermission();
+      setNotificationPermissionState(granted ? 'granted' : 'denied');
+      if (granted) {
+        saveState({
+          ...state,
+          settings: { ...state.settings, notificationsEnabled: true },
+        });
+      }
+    }
+
+    await sendSessionDoneNotification({
+      username: state.username,
+      minutes: timerDuration || state.settings?.durationDefault || 25,
+      bixEarned: (timerDuration || state.settings?.durationDefault || 25) * (state.isExecutive ? 2 : 1),
+      characterName: state.currentActiveCharacter,
+      force: true,
+    });
+
+    setTriggerNotificationToast({
+      title: 'Progress Club • Session Done! 🎯',
+      body: `Test Alert: Great focus, ${state.username}! Your session is complete (+25 Bix). Sound chime & system alert sent!`,
+    });
+    setTimeout(() => {
+      setTriggerNotificationToast(null);
+    }, 6000);
   };
 
   // Fixed Daily Trigger Notification Check
@@ -1466,6 +1509,30 @@ export default function App() {
                     )}
                   </div>
                 )}
+
+                {/* Background Notification status indicator */}
+                <div className="mt-2 flex items-center justify-center">
+                  {notificationPermissionState === 'granted' ? (
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                      <BellRing className="w-3 h-3 text-[#22c55e]" />
+                      <span>Alert ready if you switch tabs</span>
+                    </span>
+                  ) : notificationPermissionState === 'denied' ? (
+                    <span className="text-[10px] text-stone-400 dark:text-zinc-500 flex items-center gap-1">
+                      <Bell className="w-3 h-3 opacity-60" />
+                      <span>Browser alerts blocked in settings</span>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleRequestNotificationPermission}
+                      className="text-[10px] font-bold text-stone-600 dark:text-zinc-300 hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center gap-1 underline cursor-pointer"
+                    >
+                      <Bell className="w-3 h-3 text-[#22c55e]" />
+                      <span>Notify me when done if app isn't open</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* HORIZONTAL DURATIONS PILLS BAR */}
@@ -1847,7 +1914,6 @@ export default function App() {
         {activeTab === 'stats' && (
           <StatsView
             state={state}
-            onUnlockExecutive={handleJoinExecutive}
             onOpenShop={() => setActiveTab('shop')}
             onAddJournalEntry={(question, answer) => {
               const newEntry = {
@@ -2029,16 +2095,11 @@ export default function App() {
         {activeTab === 'shop' && (
           <ShopView
             state={state}
-            onJoinExecutive={handleJoinExecutive}
             onPurchaseCharacterBix={handlePurchaseCharacterBix}
-            onPurchaseCharacterCash={handlePurchaseCharacterCash}
             onPurchaseRoomBix={handlePurchaseRoomBix}
-            onPurchaseRoomCash={handlePurchaseRoomCash}
             onBuyBundleCharacters={handleBuyBundleCharacters}
             onBuyBundleRooms={handleBuyBundleRooms}
-            onGiveTip={handleGiveTip}
             onPurchaseRoomItemBix={handlePurchaseRoomItemBix}
-            onPurchaseRoomItemCash={handlePurchaseRoomItemCash}
             onToggleRoomItem={handleToggleRoomItem}
           />
         )}
@@ -2200,6 +2261,53 @@ export default function App() {
                   <p className="text-[10px] text-stone-600 dark:text-zinc-400 leading-tight">
                     {getDailyNotificationContent().body}
                   </p>
+                </div>
+
+                {/* Background Session Done Notification section */}
+                <div className="border-t border-stone-100 dark:border-zinc-800 pt-4 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <label className="text-xs font-black text-[#1a1a1a]/75 dark:text-zinc-300 uppercase tracking-wider block">
+                          Session Complete Background Alert
+                        </label>
+                        {notificationPermissionState === 'granted' && (
+                          <span className="text-[8px] bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 font-extrabold px-1.5 py-0.5 rounded uppercase">
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-stone-500 dark:text-zinc-400">
+                        Sends a system alert and sound chime if the focus timer finishes while you are in another tab or app.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2 pt-1">
+                    {notificationPermissionState !== 'granted' ? (
+                      <button
+                        type="button"
+                        onClick={handleRequestNotificationPermission}
+                        className="px-3 py-2 bg-[#22c55e] text-black text-xs font-black uppercase tracking-wider rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 hover:bg-emerald-400 cursor-pointer shadow-xs"
+                      >
+                        🔔 Enable Completion Notifications
+                      </button>
+                    ) : (
+                      <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-[#22c55e]" />
+                        <span>System notifications enabled & active</span>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={handleTestSessionCompleteAlert}
+                      className="px-3 py-2 bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-800 dark:text-zinc-200 text-xs font-black uppercase tracking-wider rounded-xl border-2 border-stone-300 dark:border-zinc-700 cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Volume2 className="w-3.5 h-3.5 text-[#22c55e]" />
+                      <span>Test Completion Alert & Chime</span>
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -2408,38 +2516,21 @@ export default function App() {
               </div>
             </div>
 
-            {/* 5. ACCOUNT & BILLING */}
+            {/* 5. APP INFO & DATA */}
             <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-5 rounded-2xl space-y-3 shadow-xs">
               <span className="text-[10px] font-black text-[#22c55e] uppercase tracking-widest block">
-                ACCOUNT & PURCHASES
+                APP INFO & DATA
               </span>
 
               <div className="flex flex-col space-y-2">
-                <button
-                  type="button"
-                  id="restore-purchases-settings"
-                  aria-label="Restore Google Play Purchases"
-                  onClick={() => {
-                    alert("Google Play Billing: Purchases synchronized and active subscriptions verified.");
-                  }}
-                  className="w-full py-3 bg-white dark:bg-zinc-800 hover:bg-stone-50 dark:hover:bg-zinc-700 border-2 border-[#2a2a2a] dark:border-zinc-700 text-xs font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-wider rounded-xl cursor-pointer"
-                >
-                  Restore Purchases
-                </button>
-                <button
-                  type="button"
-                  id="manage-sub-settings"
-                  aria-label="Cancel Subscription"
-                  onClick={() => {
-                    const confirmCancel = window.confirm("Are you sure you want to cancel your Progress Club membership?");
-                    if (confirmCancel) {
-                      alert(`Your progress and earned items are always saved, ${state.username}.`);
-                    }
-                  }}
-                  className="w-full text-center text-xs text-stone-400 hover:text-red-500 dark:hover:text-red-400 uppercase font-bold py-2"
-                >
-                  Cancel Subscription
-                </button>
+                <div className="p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-700/50 rounded-xl text-center">
+                  <p className="text-[11px] font-bold text-emerald-800 dark:text-emerald-300">
+                    ✨ 100% Free • No In-App Purchases or Subscriptions
+                  </p>
+                  <p className="text-[10px] text-stone-500 dark:text-zinc-400 mt-0.5">
+                    Unlock all crew members, rooms, and decorations by focusing and earning Bix!
+                  </p>
+                </div>
               </div>
 
               {/* App Version & Package ID Footer Badge */}

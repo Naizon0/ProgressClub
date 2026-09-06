@@ -12,7 +12,7 @@ export const CHARACTERS: CharacterInfo[] = [
   {
     id: 'blaze',
     name: 'Blaze',
-    priceUSD: 2,
+    priceUSD: 0,
     priceBix: 800,
     copy: 'runs hot. focuses hotter.',
     color: '#c2410c', // deep burnt orange
@@ -20,7 +20,7 @@ export const CHARACTERS: CharacterInfo[] = [
   {
     id: 'frost',
     name: 'Frost',
-    priceUSD: 2,
+    priceUSD: 0,
     priceBix: 800,
     copy: 'cool under pressure. always.',
     color: '#e0f2fe', // ice blue-white
@@ -28,7 +28,7 @@ export const CHARACTERS: CharacterInfo[] = [
   {
     id: 'dusk',
     name: 'Dusk',
-    priceUSD: 2,
+    priceUSD: 0,
     priceBix: 800,
     copy: 'does their best work when the world goes quiet.',
     color: '#581c87', // deep purple
@@ -36,7 +36,7 @@ export const CHARACTERS: CharacterInfo[] = [
   {
     id: 'ember',
     name: 'Ember',
-    priceUSD: 2,
+    priceUSD: 0,
     priceBix: 800,
     copy: 'small. fast. unstoppable.',
     color: '#991b1b', // deep crimson red
@@ -44,7 +44,7 @@ export const CHARACTERS: CharacterInfo[] = [
   {
     id: 'mantis',
     name: 'Mantis',
-    priceUSD: 2,
+    priceUSD: 0,
     priceBix: 800,
     copy: 'slow is smooth. smooth is fast.',
     color: '#4ade80', // lighter green
@@ -52,7 +52,7 @@ export const CHARACTERS: CharacterInfo[] = [
   {
     id: 'volt',
     name: 'Volt',
-    priceUSD: 3,
+    priceUSD: 0,
     priceBix: 1200,
     copy: 'moves fast. thinks faster.',
     color: '#eab308', // electric yellow
@@ -60,9 +60,9 @@ export const CHARACTERS: CharacterInfo[] = [
   {
     id: 'monument',
     name: 'The Monument',
-    priceUSD: 4,
-    priceBix: -1, // Cannot be purchased with Bix
-    copy: 'earned. not bought. well, almost.',
+    priceUSD: 0,
+    priceBix: 2000,
+    copy: 'earned through relentless deep work and dedication.',
     color: '#fafafa', // stark white (inverse of Cipher)
   },
 ];
@@ -78,50 +78,50 @@ export const ROOMS: RoomInfo[] = [
   {
     id: 'latenight',
     name: 'Late Night City',
-    priceUSD: 3,
+    priceUSD: 0,
     priceBix: 1200,
     copy: 'some of the best work happens when the world is quiet.',
   },
   {
     id: 'cabin',
     name: 'Minimalist Cabin',
-    priceUSD: 1,
+    priceUSD: 0,
     priceBix: 400,
     copy: 'cozy focus is still focus.',
   },
   {
     id: 'library',
     name: 'The Library',
-    priceUSD: 2,
+    priceUSD: 0,
     priceBix: 800,
     copy: 'every answer you need is in here, including focus.',
   },
   {
     id: 'deepspace',
     name: 'Deep Space',
-    priceUSD: 3,
+    priceUSD: 0,
     priceBix: 1200,
-    exclusiveExecutive: true,
+    exclusiveExecutive: false,
     copy: "focus that's out of this world.",
   },
   {
     id: 'dojo',
     name: 'The Dojo',
-    priceUSD: 2,
+    priceUSD: 0,
     priceBix: 800,
     copy: 'quiet mind. focused work. good results.',
   },
   {
     id: 'diner',
     name: '24/7 Diner',
-    priceUSD: 2,
+    priceUSD: 0,
     priceBix: 800,
     copy: 'open all night. just like your ambitions.',
   },
   {
     id: 'penthouse',
     name: 'The Penthouse',
-    priceUSD: 4,
+    priceUSD: 0,
     priceBix: 1600,
     copy: "you've earned this view. now earn the rest.",
   },
@@ -131,7 +131,7 @@ export const ROOM_ITEMS: RoomItemInfo[] = [
   {
     id: 'lava-lamp',
     name: 'Retro Lava Lamp',
-    priceUSD: 1,
+    priceUSD: 0,
     priceBix: 300,
     copy: 'slowly rising bubbles to sync with your state of mind.',
     icon: '🔮',
@@ -139,7 +139,7 @@ export const ROOM_ITEMS: RoomItemInfo[] = [
   {
     id: 'soccer-ball',
     name: 'Classic Soccer Ball',
-    priceUSD: 1.2,
+    priceUSD: 0,
     priceBix: 350,
     copy: 'classic heavy-stitch size 5 ball. stays right at your feet.',
     icon: '⚽',
@@ -147,7 +147,7 @@ export const ROOM_ITEMS: RoomItemInfo[] = [
   {
     id: 'basketball',
     name: 'Championship Basketball',
-    priceUSD: 1.3,
+    priceUSD: 0,
     priceBix: 380,
     copy: 'premium leather ball with high-grip grooves for active focusing.',
     icon: '🏀',
@@ -155,7 +155,7 @@ export const ROOM_ITEMS: RoomItemInfo[] = [
   {
     id: 'gold-trophy',
     name: 'Gold Focus Trophy',
-    priceUSD: 2,
+    priceUSD: 0,
     priceBix: 600,
     copy: 'gold is the standard. a shiny emblem on your desk.',
     icon: '🏆',
@@ -163,7 +163,7 @@ export const ROOM_ITEMS: RoomItemInfo[] = [
   {
     id: 'bonsai-tree',
     name: 'Botanical Bonsai Tree',
-    priceUSD: 1.5,
+    priceUSD: 0,
     priceBix: 450,
     copy: 'a meticulously pruned symbol of patience and growth.',
     icon: '🪴',
