@@ -101,7 +101,7 @@ export const ROOMS: RoomInfo[] = [
     name: 'Deep Space',
     priceUSD: 0,
     priceBix: 1200,
-    exclusiveExecutive: false,
+    exclusiveExecutive: true,
     copy: "focus that's out of this world.",
   },
   {

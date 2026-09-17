@@ -178,10 +178,10 @@ export const LegalModal: React.FC<LegalModalProps> = ({
 
               <div>
                 <h3 className="text-sm font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tight mb-1">
-                  3. Free & Open Experience
+                  3. Executive Club Memberships & Digital Rewards
                 </h3>
                 <p className="text-stone-600 dark:text-zinc-400">
-                  Progress Club does not require any paid memberships, in-app purchases, or payment credentials. All features, analytics, and content are unlocked through consistent daily focus sessions.
+                  Progress Club offers optional Executive Club memberships (Yearly, Monthly, or Weekly) providing focus boosters including 2x Bix multipliers, VIP Deep Space cabin access, and executive analytics. Subscriptions can be managed or cancelled at any time directly in Settings. Core focus timers and base rewards remain accessible without a subscription.
                 </p>
               </div>
 

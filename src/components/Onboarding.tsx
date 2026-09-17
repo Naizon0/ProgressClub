@@ -2,12 +2,21 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QuizAnswers, ChallengeLength } from '../types';
 import CrewCharacter from './CrewCharacter';
+import {
+  executePlayStorePurchase,
+  executePlayStoreRestore,
+  isMedianAvailable,
+  isBillingSandboxEnabled,
+  setBillingSandboxEnabled,
+} from '../utils/medianBilling';
+import { Loader2, AlertCircle, RotateCcw } from 'lucide-react';
 
 interface OnboardingProps {
   onComplete: (data: {
     username: string;
     quizAnswers: QuizAnswers;
     subscriptionPlan: 'weekly' | 'monthly' | 'yearly';
+    isExecutive?: boolean;
     recommendedCharacter: string;
     recommendedRoom: string;
     dailyGoals: string[];
@@ -52,8 +61,13 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [selectedGoals, setSelectedGoals] = useState<string[]>([]);
   const [customGoalInput, setCustomGoalInput] = useState('');
 
-  // Selected Plan
+  // Selected Plan (Free plan removed - paid membership required)
   const [selectedPlan, setSelectedPlan] = useState<'weekly' | 'monthly' | 'yearly'>('yearly');
+  const [isPurchasing, setIsPurchasing] = useState(false);
+  const [billingError, setBillingError] = useState<string | null>(null);
+  const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
+  const [confirmedPlan, setConfirmedPlan] = useState<'weekly' | 'monthly' | 'yearly'>('yearly');
+  const [sandboxActive, setSandboxActive] = useState<boolean>(isBillingSandboxEnabled());
 
   // Random quotes set once per visit
   const [currentSocialProof, setCurrentSocialProof] = useState('');
@@ -175,14 +189,62 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
     return '"discipline outlasts motivation. every time."';
   };
 
-  // On confirmation, triggers callback to parent
-  const handleStartJourney = () => {
-    const recommendedChar = getRecommendedCharacter();
-    const recommendedR = getRecommendedRoom();
-    setSection('welcome');
+  // On confirmation, triggers Google Play purchase to join Progress Club
+  const handleStartJourney = async () => {
+    setBillingError(null);
+    setIsPurchasing(true);
+
+    try {
+      const result = await executePlayStorePurchase(selectedPlan);
+
+      if (!result.success) {
+        if (!result.cancelled) {
+          setBillingError(result.error || 'Google Play purchase was not completed. An active subscription is required to join the club.');
+        }
+        setIsPurchasing(false);
+        return;
+      }
+
+      // Payment verified via Google Play
+      setIsPurchasing(false);
+      setIsPaymentConfirmed(true);
+      setConfirmedPlan(selectedPlan);
+      setSection('welcome');
+    } catch (err: any) {
+      setIsPurchasing(false);
+      setBillingError(err?.message || 'Google Play Billing error occurred.');
+    }
+  };
+
+  // Restore active Google Play subscription during onboarding
+  const handleRestoreOnboarding = async () => {
+    setBillingError(null);
+    setIsPurchasing(true);
+
+    try {
+      const result = await executePlayStoreRestore();
+      setIsPurchasing(false);
+
+      if (result.success && result.restoredPlan) {
+        setIsPaymentConfirmed(true);
+        setConfirmedPlan(result.restoredPlan);
+        setSection('welcome');
+      } else {
+        setBillingError(result.message || 'No existing active Google Play subscription found.');
+      }
+    } catch (err: any) {
+      setIsPurchasing(false);
+      setBillingError(err?.message || 'Failed to restore Google Play purchases.');
+    }
   };
 
   const handleLetBegin = () => {
+    if (!isPaymentConfirmed) {
+      setSection('paywall');
+      setPaywallStep(3);
+      return;
+    }
+
     onComplete({
       username: nameInput || 'Friend',
       quizAnswers: {
@@ -196,7 +258,8 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
         distractionHours: selectedDistraction,
         valueOfTime: selectedValue,
       },
-      subscriptionPlan: selectedPlan,
+      subscriptionPlan: confirmedPlan,
+      isExecutive: true,
       recommendedCharacter: getRecommendedCharacter(),
       recommendedRoom: getRecommendedRoom(),
       dailyGoals: selectedGoals,
@@ -1070,11 +1133,190 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
           <button
             id="summary-step2-next"
-            onClick={handleStartJourney}
-            className="w-full py-4 mt-6 text-center text-sm font-bold uppercase tracking-wider bg-[#22c55e] text-[#0a0a0a] rounded-lg border border-[#2a2a2a] cursor-pointer hover:opacity-90 transition-opacity"
+            onClick={() => setPaywallStep(3)}
+            className="w-full py-4 mt-6 text-center text-sm font-bold uppercase tracking-wider bg-[#22c55e] text-[#0a0a0a] rounded-lg border border-[#2a2a2a] cursor-pointer hover:opacity-90 transition-opacity shadow-xs"
           >
             this is me
           </button>
+        </div>
+      );
+    }
+
+    if (paywallStep === 3) {
+      // Step 3: Executive Club Membership Selection
+      return (
+        <div className="flex flex-col flex-1 justify-between p-6 overflow-y-auto max-h-[90vh]">
+          <div className="text-left mt-2 text-[#0a0a0a]">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[10px] font-black uppercase text-[#22c55e] tracking-widest bg-[#22c55e]/10 px-2.5 py-1 rounded border border-[#22c55e]/30">
+                EXECUTIVE MEMBERSHIP
+              </span>
+            </div>
+            
+            <h1 className="text-2xl font-black tracking-tight text-[#0a0a0a] uppercase mb-1">
+              JOIN PROGRESS CLUB
+            </h1>
+            <p className="text-xs text-[#1a1a1a]/70 mb-4">
+              Commit to your 21-day streak with double focus rewards and VIP club features.
+            </p>
+
+            {/* Benefits highlights */}
+            <div className="bg-[#f5f5f5] border-2 border-[#2a2a2a] p-3.5 rounded-xl mb-4 space-y-2.5">
+              <div className="flex items-center gap-2.5 text-xs font-bold text-[#0a0a0a]">
+                <span className="text-emerald-600 text-sm">⚡</span>
+                <span><strong>2x Double Bix Multiplier</strong> on all focus sessions</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-xs font-bold text-[#0a0a0a]">
+                <span className="text-indigo-600 text-sm">🌌</span>
+                <span><strong>VIP Deep Space Cabin</strong> instantly unlocked</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-xs font-bold text-[#0a0a0a]">
+                <span className="text-amber-600 text-sm">📈</span>
+                <span><strong>Executive Habit Forecast</strong> & velocity curves</span>
+              </div>
+              <div className="flex items-center gap-2.5 text-xs font-bold text-[#0a0a0a]">
+                <span className="text-emerald-700 text-sm">🛡️</span>
+                <span><strong>Bonus Streak Shield</strong> protection</span>
+              </div>
+            </div>
+
+            {/* Plan selection cards */}
+            <div className="space-y-2.5">
+              {/* Yearly Plan */}
+              <div
+                id="plan-yearly-option"
+                onClick={() => setSelectedPlan('yearly')}
+                className={`p-3.5 border-2 rounded-xl cursor-pointer transition-all relative flex justify-between items-center ${
+                  selectedPlan === 'yearly'
+                    ? 'border-[#22c55e] bg-[#22c55e]/10 ring-2 ring-[#22c55e]/30'
+                    : 'border-[#2a2a2a] bg-white hover:bg-stone-50'
+                }`}
+              >
+                <span className="absolute -top-2.5 right-3 bg-[#22c55e] text-black text-[8px] font-black uppercase px-2 py-0.5 rounded border border-black shadow-xs">
+                  BEST VALUE • SAVE 80%
+                </span>
+                <div>
+                  <p className="text-xs font-black uppercase">Yearly Membership</p>
+                  <p className="text-[10px] text-[#1a1a1a]/60">$1.00/month (billed $12.00 annually)</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-black">$12.00</span>
+                  <span className="text-[10px] text-[#1a1a1a]/60 block">/year</span>
+                </div>
+              </div>
+
+              {/* Monthly Plan */}
+              <div
+                id="plan-monthly-option"
+                onClick={() => setSelectedPlan('monthly')}
+                className={`p-3.5 border-2 rounded-xl cursor-pointer transition-all flex justify-between items-center ${
+                  selectedPlan === 'monthly'
+                    ? 'border-[#22c55e] bg-[#22c55e]/10 ring-2 ring-[#22c55e]/30'
+                    : 'border-[#2a2a2a] bg-white hover:bg-stone-50'
+                }`}
+              >
+                <div>
+                  <p className="text-xs font-black uppercase">Monthly Membership</p>
+                  <p className="text-[10px] text-[#1a1a1a]/60">Flexible month-to-month pass</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-black">$5.50</span>
+                  <span className="text-[10px] text-[#1a1a1a]/60 block">/month</span>
+                </div>
+              </div>
+
+              {/* Weekly Plan */}
+              <div
+                id="plan-weekly-option"
+                onClick={() => setSelectedPlan('weekly')}
+                className={`p-3.5 border-2 rounded-xl cursor-pointer transition-all flex justify-between items-center ${
+                  selectedPlan === 'weekly'
+                    ? 'border-[#22c55e] bg-[#22c55e]/10 ring-2 ring-[#22c55e]/30'
+                    : 'border-[#2a2a2a] bg-white hover:bg-stone-50'
+                }`}
+              >
+                <div>
+                  <p className="text-xs font-black uppercase">Weekly Pass</p>
+                  <p className="text-[10px] text-[#1a1a1a]/60">Short-term focus sprint</p>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-black">$1.50</span>
+                  <span className="text-[10px] text-[#1a1a1a]/60 block">/week</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Error banner if purchase failed/cancelled */}
+            {billingError && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-300 rounded-xl flex items-start gap-2.5 text-xs text-red-700 text-left">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-500" />
+                <div className="flex-1">
+                  <p className="font-bold">Google Play Payment Not Completed</p>
+                  <p className="text-[11px] mt-0.5 text-red-600">{billingError}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Preview notice if testing outside Median */}
+            {!isMedianAvailable() && !sandboxActive && (
+              <div className="mt-3 p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-left text-[11px] text-amber-900">
+                <p className="font-bold">Google Play Billing Active</p>
+                <p className="text-[10px] text-amber-800 mt-0.5">
+                  Real Google Play charges trigger inside the installed Play Store app. For browser testing, click below to toggle Sandbox Mode.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBillingSandboxEnabled(true);
+                    setSandboxActive(true);
+                  }}
+                  className="mt-1.5 font-bold underline text-[10px] text-amber-900 hover:text-black cursor-pointer"
+                >
+                  Enable Sandbox Mode for Web Testing
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 space-y-2.5">
+            <button
+              id="start-membership-btn"
+              disabled={isPurchasing}
+              onClick={handleStartJourney}
+              className={`w-full py-4 text-center text-xs font-black uppercase tracking-wider rounded-xl border-2 border-[#2a2a2a] cursor-pointer shadow-xs active:translate-y-px transition-all flex items-center justify-center gap-2 ${
+                isPurchasing
+                  ? 'bg-emerald-300 text-black cursor-wait opacity-85'
+                  : 'bg-[#22c55e] text-[#0a0a0a] hover:bg-emerald-400'
+              }`}
+            >
+              {isPurchasing ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-black" />
+                  <span>Connecting to Google Play...</span>
+                </>
+              ) : (
+                <span>
+                  Subscribe via Google Play ($
+                  {selectedPlan === 'yearly' ? '12.00/yr' : selectedPlan === 'monthly' ? '5.50/mo' : '1.50/wk'})
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              id="restore-purchases-onboarding-btn"
+              disabled={isPurchasing}
+              onClick={handleRestoreOnboarding}
+              className="w-full py-2.5 text-center text-xs font-bold text-stone-600 hover:text-black uppercase tracking-wider cursor-pointer transition-colors flex items-center justify-center gap-1.5 underline"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Already Subscribed? Restore Purchases</span>
+            </button>
+
+            <p className="text-[9px] text-center text-stone-400">
+              Secured by Google Play Billing • Cancel anytime in Google Play Subscriptions • 100% Secure
+            </p>
+          </div>
         </div>
       );
     }

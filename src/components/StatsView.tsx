@@ -77,12 +77,14 @@ interface StatsViewProps {
   state: AppState;
   onOpenShop?: () => void;
   onAddJournalEntry?: (question: string, answer: string) => void;
+  onUnlockExecutive?: () => void;
 }
 
 export const StatsView: React.FC<StatsViewProps> = ({
   state,
   onOpenShop,
   onAddJournalEntry,
+  onUnlockExecutive,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'tracker' | 'journal'>('overview');
   const [friendCodeInput, setFriendCodeInput] = useState('');
@@ -396,6 +398,76 @@ export const StatsView: React.FC<StatsViewProps> = ({
 
           {/* SVG bar chart */}
           {renderWeeklyChart()}
+
+          {/* Executive Habit Forecast Card */}
+          {state.isExecutive ? (
+            <div className="bg-gradient-to-br from-amber-50 to-amber-100/40 border-2 border-amber-400 dark:border-amber-600/70 p-4 rounded-xl space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-amber-600 text-xs">👑</span>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-amber-950 dark:text-amber-200">
+                    EXECUTIVE HABIT FORECAST & PRODUCTIVITY VELOCITY
+                  </h4>
+                </div>
+                <span className="text-[9px] font-black uppercase text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-full border border-amber-400">
+                  UNLOCKED
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-900/80 leading-relaxed font-medium">
+                Based on your current <strong>{getChallengeStreak(state.completedDates)}d streak</strong> and <strong>{state.totalFocusedMinutes} focus minutes</strong>:
+              </p>
+              
+              <div className="grid grid-cols-3 gap-2 text-center">
+                <div className="bg-white/90 p-2.5 rounded-lg border border-amber-300">
+                  <span className="text-[8px] font-black uppercase text-stone-500 block">Consistency Index</span>
+                  <span className="text-sm font-black text-amber-900">
+                    {Math.min(100, Math.round((state.completedDates.length / Math.max(1, state.challengeLength)) * 100))}%
+                  </span>
+                </div>
+                <div className="bg-white/90 p-2.5 rounded-lg border border-amber-300">
+                  <span className="text-[8px] font-black uppercase text-stone-500 block">Bix Multiplier</span>
+                  <span className="text-sm font-black text-[#22c55e]">2.0x (VIP)</span>
+                </div>
+                <div className="bg-white/90 p-2.5 rounded-lg border border-amber-300">
+                  <span className="text-[8px] font-black uppercase text-stone-500 block">Estimated Finish</span>
+                  <span className="text-sm font-black text-amber-900">
+                    Day {Math.min(state.challengeLength, Math.max(1, state.completedDates.length + 7))}
+                  </span>
+                </div>
+              </div>
+
+              <div className="bg-white/80 p-3 rounded-lg border border-amber-200 text-[10px] text-amber-900 flex items-center gap-2">
+                <span className="text-base">🚀</span>
+                <span>Your focus velocity is <strong>1.8x higher</strong> than standard rhythm. Maintaining this pace will secure top club rank.</span>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-stone-50 dark:bg-zinc-800/80 border-2 border-dashed border-stone-300 dark:border-zinc-700 p-4 rounded-xl space-y-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-stone-400">🔒</span>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[#0a0a0a] dark:text-zinc-100">
+                    EXECUTIVE HABIT FORECAST & PRODUCTIVITY VELOCITY
+                  </h4>
+                </div>
+                <span className="text-[9px] font-bold uppercase text-stone-500 bg-stone-200 dark:bg-zinc-700 px-2 py-0.5 rounded">
+                  PASS REQUIRED
+                </span>
+              </div>
+              <p className="text-xs text-stone-600 dark:text-zinc-400">
+                Unlock multi-month forecasts, productivity curves, and 2x Bix earnings with the Executive Pass.
+              </p>
+              <button
+                type="button"
+                id="unlock-executive-stats-btn"
+                onClick={onUnlockExecutive}
+                className="w-full py-2 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-black text-xs font-black uppercase rounded-lg border border-stone-900 shadow-xs cursor-pointer active:translate-y-px transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>👑</span>
+                <span>Unlock Executive Pass ($12/yr or $5.50/mo)</span>
+              </button>
+            </div>
+          )}
 
           {/* Friendly crew upsell card */}
           <div className="bg-white border-2 border-[#2a2a2a] p-4 rounded-xl flex items-center justify-between">
