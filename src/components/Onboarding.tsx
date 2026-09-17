@@ -6,8 +6,6 @@ import {
   executePlayStorePurchase,
   executePlayStoreRestore,
   isMedianAvailable,
-  isBillingSandboxEnabled,
-  setBillingSandboxEnabled,
 } from '../utils/medianBilling';
 import { Loader2, AlertCircle, RotateCcw } from 'lucide-react';
 
@@ -67,7 +65,6 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   const [billingError, setBillingError] = useState<string | null>(null);
   const [isPaymentConfirmed, setIsPaymentConfirmed] = useState(false);
   const [confirmedPlan, setConfirmedPlan] = useState<'weekly' | 'monthly' | 'yearly'>('yearly');
-  const [sandboxActive, setSandboxActive] = useState<boolean>(isBillingSandboxEnabled());
 
   // Random quotes set once per visit
   const [currentSocialProof, setCurrentSocialProof] = useState('');
@@ -1254,26 +1251,6 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
                   <p className="font-bold">Google Play Payment Not Completed</p>
                   <p className="text-[11px] mt-0.5 text-red-600">{billingError}</p>
                 </div>
-              </div>
-            )}
-
-            {/* Preview notice if testing outside Median */}
-            {!isMedianAvailable() && !sandboxActive && (
-              <div className="mt-3 p-2.5 bg-amber-50 border border-amber-300 rounded-xl text-left text-[11px] text-amber-900">
-                <p className="font-bold">Google Play Billing Active</p>
-                <p className="text-[10px] text-amber-800 mt-0.5">
-                  Real Google Play charges trigger inside the installed Play Store app. For browser testing, click below to toggle Sandbox Mode.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBillingSandboxEnabled(true);
-                    setSandboxActive(true);
-                  }}
-                  className="mt-1.5 font-bold underline text-[10px] text-amber-900 hover:text-black cursor-pointer"
-                >
-                  Enable Sandbox Mode for Web Testing
-                </button>
               </div>
             )}
           </div>

@@ -15,8 +15,6 @@ import {
 import {
   executePlayStorePurchase,
   isMedianAvailable,
-  isBillingSandboxEnabled,
-  setBillingSandboxEnabled,
   openPlayStoreSubscriptionManager,
   type PlanType,
 } from '../utils/medianBilling';
@@ -41,7 +39,6 @@ export const MembershipModal: React.FC<MembershipModalProps> = ({
   const [selectedPlan, setSelectedPlan] = useState<PlanType>('yearly');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [sandboxActive, setSandboxActive] = useState<boolean>(isBillingSandboxEnabled());
 
   if (!isOpen) return null;
 
@@ -278,47 +275,6 @@ export const MembershipModal: React.FC<MembershipModalProps> = ({
                 <p className="font-bold">Purchase Not Completed</p>
                 <p className="text-[11px] mt-0.5 text-red-600 dark:text-red-400">{errorMessage}</p>
               </div>
-            </div>
-          )}
-
-          {/* Web Environment Notice if not inside Median app */}
-          {!hasMedian && !sandboxActive && (
-            <div className="mx-5 mb-3 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-300 dark:border-amber-700/60 rounded-xl text-xs text-amber-900 dark:text-amber-200">
-              <p className="font-bold flex items-center gap-1.5">
-                <span>🤖</span> Google Play In-App Billing
-              </p>
-              <p className="text-[10px] text-amber-800/80 dark:text-amber-300/80 mt-1 leading-relaxed">
-                Purchases and real subscriptions are processed natively through Google Play inside your installed Android app.
-              </p>
-              <div className="mt-2 pt-2 border-t border-amber-200 dark:border-amber-800 flex items-center justify-between text-[10px]">
-                <span className="text-stone-500">Developer Testing?</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBillingSandboxEnabled(true);
-                    setSandboxActive(true);
-                  }}
-                  className="font-bold underline text-amber-800 dark:text-amber-300 hover:text-black cursor-pointer"
-                >
-                  Enable Sandbox Mode
-                </button>
-              </div>
-            </div>
-          )}
-
-          {sandboxActive && !hasMedian && (
-            <div className="mx-5 mb-3 p-2.5 bg-purple-50 dark:bg-purple-950/30 border border-purple-300 rounded-xl text-xs text-purple-900 dark:text-purple-200 flex items-center justify-between">
-              <span className="text-[10px] font-bold">🧪 Sandbox Simulation Active</span>
-              <button
-                type="button"
-                onClick={() => {
-                  setBillingSandboxEnabled(false);
-                  setSandboxActive(false);
-                }}
-                className="text-[10px] underline text-purple-700 dark:text-purple-300 cursor-pointer font-bold"
-              >
-                Disable
-              </button>
             </div>
           )}
         </div>

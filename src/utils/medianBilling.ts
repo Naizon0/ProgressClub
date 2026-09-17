@@ -16,7 +16,13 @@ export const DEFAULT_PLAY_SKUS: PlayStoreSKUMap = {
 };
 
 const SKU_STORAGE_KEY = 'progressclub_play_skus_v1';
-const SANDBOX_STORAGE_KEY = 'progressclub_billing_sandbox_mode';
+
+// Purge any legacy sandbox flags
+if (typeof window !== 'undefined') {
+  try {
+    localStorage.removeItem('progressclub_billing_sandbox_mode');
+  } catch {}
+}
 
 // Retrieve configured SKUs (or fall back to defaults)
 export function getPlayStoreSKUs(): PlayStoreSKUMap {
@@ -38,17 +44,6 @@ export function setPlayStoreSKUs(skus: Partial<PlayStoreSKUMap>): void {
   const current = getPlayStoreSKUs();
   const updated = { ...current, ...skus };
   localStorage.setItem(SKU_STORAGE_KEY, JSON.stringify(updated));
-}
-
-// Check if developer testing sandbox mode is enabled (for browser previews)
-export function isBillingSandboxEnabled(): boolean {
-  if (typeof window === 'undefined') return false;
-  return localStorage.getItem(SANDBOX_STORAGE_KEY) === 'true';
-}
-
-export function setBillingSandboxEnabled(enabled: boolean): void {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(SANDBOX_STORAGE_KEY, enabled ? 'true' : 'false');
 }
 
 // Check if Median JavaScript Bridge is available
@@ -80,7 +75,6 @@ export interface PurchaseResult {
   error?: string;
   transactionId?: string;
   productID?: string;
-  isSandbox?: boolean;
 }
 
 /**
@@ -133,18 +127,7 @@ export async function executePlayStorePurchase(plan: PlanType): Promise<Purchase
     }
   }
 
-  // 2. Fallback: If running in standard browser outside Median
-  if (isBillingSandboxEnabled()) {
-    console.warn('[Billing Sandbox] Simulated Google Play purchase for plan:', plan);
-    return {
-      success: true,
-      transactionId: `sandbox_${Date.now()}`,
-      productID: targetSku,
-      isSandbox: true,
-    };
-  }
-
-  // 3. In browser without sandbox mode: strict block
+  // Running outside Median or IAP bridge not available: Google Play Billing is strictly required
   return {
     success: false,
     error:
@@ -195,14 +178,6 @@ export async function executePlayStoreRestore(): Promise<{
         message: `Failed to restore Google Play purchases: ${err?.message || err}`,
       };
     }
-  }
-
-  if (isBillingSandboxEnabled()) {
-    return {
-      success: true,
-      restoredPlan: 'yearly',
-      message: '[Sandbox Mode] Restored test membership.',
-    };
   }
 
   return {
