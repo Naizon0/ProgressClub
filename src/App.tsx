@@ -19,6 +19,7 @@ import {
   isMedianAvailable,
   getPlayStoreSKUs,
   setPlayStoreSKUs,
+  detectBillingEnvironment,
 } from './utils/medianBilling';
 import {
   Sun,
@@ -156,6 +157,21 @@ export default function App() {
   const [showMembershipModal, setShowMembershipModal] = useState(false);
   const [showSkuConfigModal, setShowSkuConfigModal] = useState(false);
   const [skuConfig, setSkuConfig] = useState(getPlayStoreSKUs());
+  const [billingEnv, setBillingEnv] = useState<{ label: string; isNative: boolean; description: string }>({
+    label: 'Checking Google Play connection...',
+    isNative: false,
+    description: '',
+  });
+
+  useEffect(() => {
+    detectBillingEnvironment().then((info) => {
+      setBillingEnv({
+        label: info.label,
+        isNative: info.isNativePlayBilling,
+        description: info.description,
+      });
+    });
+  }, [showSkuConfigModal, showMembershipModal]);
 
   // Tracking temporary states
   const [currentJournalQuestion, setCurrentJournalQuestion] = useState('');
@@ -3193,7 +3209,7 @@ export default function App() {
                 <h3 className="text-sm font-black uppercase text-[#0a0a0a] dark:text-zinc-100 flex items-center gap-1.5">
                   <span>🤖</span> Google Play Billing Setup
                 </h3>
-                <p className="text-[10px] text-stone-500">Median.co In-App Purchases Bridge</p>
+                <p className="text-[10px] text-stone-500">Free PWABuilder / TWA & Median Supported</p>
               </div>
               <button
                 type="button"
@@ -3207,21 +3223,19 @@ export default function App() {
             {/* Status indicator */}
             <div className="p-3 bg-stone-50 dark:bg-zinc-800/80 rounded-xl text-xs space-y-1">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-stone-600 dark:text-zinc-400">Median Bridge:</span>
-                {isMedianAvailable() ? (
-                  <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 border border-emerald-300">
-                    🟢 Detected & Connected
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
-                    Web Preview (Browser)
-                  </span>
-                )}
+                <span className="text-[11px] font-bold text-stone-600 dark:text-zinc-400">Play Billing:</span>
+                <span
+                  className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${
+                    billingEnv.isNative
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700'
+                      : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700'
+                  }`}
+                >
+                  {billingEnv.isNative ? '🟢 ' + billingEnv.label : '🌐 ' + billingEnv.label}
+                </span>
               </div>
-              <p className="text-[10px] text-stone-500 mt-1">
-                {isMedianAvailable()
-                  ? 'Real Google Play billing sheet will trigger upon purchase taps.'
-                  : 'Running outside Android wrapper. Real charges trigger inside your installed APK/AAB.'}
+              <p className="text-[10px] text-stone-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                {billingEnv.description}
               </p>
             </div>
 

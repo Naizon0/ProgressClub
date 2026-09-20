@@ -68,8 +68,6 @@ export const MembershipModal: React.FC<MembershipModalProps> = ({
     }
   };
 
-  const hasMedian = isMedianAvailable();
-
   return (
     <div
       role="dialog"
