@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AppState, CharacterInfo } from '../types';
 import { CHARACTERS, ROOMS, ROOM_ITEMS } from '../data';
 import CrewCharacter from './CrewCharacter';
+import RoomPreviewThumbnail from './RoomPreviewThumbnail';
 import {
   Sparkles,
   Star,
@@ -22,7 +23,6 @@ interface ShopViewProps {
   onBuyBundleRooms: () => void;
   onPurchaseRoomItemBix: (id: string, costBix: number) => void;
   onToggleRoomItem: (id: string) => void;
-  onOpenMembershipModal?: () => void;
 }
 
 // Extra designer features to make items highly enticing
@@ -205,7 +205,6 @@ export const ShopView: React.FC<ShopViewProps> = ({
   onBuyBundleRooms,
   onPurchaseRoomItemBix,
   onToggleRoomItem,
-  onOpenMembershipModal,
 }) => {
   const [selectedCharacter, setSelectedCharacter] = useState<CharacterInfo | null>(null);
   const [detailPoseIndex, setDetailPoseIndex] = useState(0); // 0 = idle, 1 = typing, 2 = celebrating
@@ -243,76 +242,23 @@ export const ShopView: React.FC<ShopViewProps> = ({
         </div>
       </div>
 
-      {/* Executive Club Membership Card */}
-      {state.isExecutive ? (
-        <div className="bg-gradient-to-r from-amber-500/15 via-yellow-400/10 to-emerald-500/15 border-2 border-amber-400 dark:border-amber-500/60 rounded-2xl p-4.5 space-y-2.5 shadow-[4px_4px_0px_0px_rgba(245,158,11,1)] relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Crown className="h-4 w-4 text-amber-500 fill-amber-400" />
-              <h2 className="text-xs font-black tracking-widest text-[#0a0a0a] dark:text-zinc-100 uppercase">
-                EXECUTIVE MEMBERSHIP ACTIVE
-              </h2>
-            </div>
-            <span className="text-[9px] font-black uppercase bg-[#22c55e] text-black px-2 py-0.5 rounded-full border border-black shadow-xs">
-              {state.subscriptionPlan.toUpperCase()} PASS
-            </span>
+      {/* Focus Earning Engine Card */}
+      <div className="bg-gradient-to-r from-emerald-500/15 via-teal-400/10 to-[#22c55e]/15 border-2 border-[#22c55e] dark:border-emerald-500/60 rounded-2xl p-4.5 space-y-2.5 shadow-[4px_4px_0px_0px_rgba(34,197,94,1)] relative overflow-hidden">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Sparkles className="h-4 w-4 text-[#22c55e]" />
+            <h2 className="text-xs font-black tracking-widest text-[#0a0a0a] dark:text-zinc-100 uppercase">
+              FOCUS REWARD ENGINE
+            </h2>
           </div>
-          <p className="text-xs text-[#1a1a1a]/80 dark:text-zinc-300 font-medium">
-            ⚡ <strong>2x Bix Multiplier</strong> active on all sessions • VIP Deep Space Workspace unlocked • Executive Analytics enabled.
-          </p>
-          <div className="pt-1">
-            <button
-              type="button"
-              id="manage-executive-shop-btn"
-              onClick={onOpenMembershipModal}
-              className="text-[11px] font-black uppercase text-amber-700 dark:text-amber-300 hover:underline cursor-pointer flex items-center gap-1"
-            >
-              <span>Manage Executive Pass</span>
-              <span>&rarr;</span>
-            </button>
-          </div>
+          <span className="text-[9px] font-black uppercase bg-[#22c55e] text-black px-2.5 py-0.5 rounded-full border border-black shadow-xs">
+            ⚡ 2 BIX / MINUTE
+          </span>
         </div>
-      ) : (
-        <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-2xl p-4.5 space-y-3 shadow-[4px_4px_0px_0px_rgba(10,10,10,1)]">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <Crown className="h-4 w-4 text-amber-500 fill-amber-400" />
-              <h2 className="text-xs font-black tracking-widest text-[#0a0a0a] dark:text-zinc-100 uppercase">
-                EXECUTIVE PASS MEMBERSHIP
-              </h2>
-            </div>
-            <span className="text-[9px] font-black uppercase bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5 rounded border border-amber-300">
-              VIP PASS
-            </span>
-          </div>
-          <p className="text-xs text-[#1a1a1a]/80 dark:text-zinc-300 font-medium leading-relaxed">
-            Double your focus earnings, unlock the VIP Deep Space cabin, and access multi-month habit forecasting.
-          </p>
-          <div className="grid grid-cols-2 gap-2 text-[10px] font-bold text-stone-600 dark:text-zinc-400">
-            <div className="flex items-center gap-1.5">
-              <span className="text-emerald-500">⚡</span> 2x Focus Bix Rate
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-indigo-500">🌌</span> VIP Deep Space Room
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-amber-500">📈</span> Executive Analytics
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-emerald-600">🛡️</span> Streak Protection
-            </div>
-          </div>
-          <button
-            type="button"
-            id="unlock-executive-shop-btn"
-            onClick={onOpenMembershipModal}
-            className="w-full py-2.5 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-black text-xs font-black uppercase rounded-xl border-2 border-stone-900 shadow-xs active:translate-y-px transition-all cursor-pointer flex items-center justify-center gap-1.5"
-          >
-            <Crown className="w-3.5 h-3.5 fill-black" />
-            <span>Join Executive Club ($12/yr, $5.50/mo, or $1.50/wk)</span>
-          </button>
-        </div>
-      )}
+        <p className="text-xs text-[#1a1a1a]/85 dark:text-zinc-300 font-medium leading-relaxed">
+          Earn <strong>2 Bix for every 1 minute of focus</strong>! Everything in Progress Club is <strong>100% free</strong> and unlocked exclusively with Bix earned from your dedicated focus sessions.
+        </p>
+      </div>
 
       {/* Rewards info banner */}
       <div className="bg-white border-2 border-[#2a2a2a] rounded-2xl p-4.5 space-y-2 shadow-[4px_4px_0px_0px_rgba(10,10,10,1)]">
@@ -338,20 +284,20 @@ export const ShopView: React.FC<ShopViewProps> = ({
             <div className="bg-[#22c55e] p-3 text-center border-b-2 border-[#2a2a2a] relative">
               <span className="absolute top-1 left-2 bg-black uppercase text-white font-serif italic text-[8px] font-black tracking-widest px-1.5 rounded">BUNDLE SAVINGS</span>
               <h3 className="text-xs font-black text-[#0a0a0a] uppercase tracking-widest">WORLD ATLAS ROOM BUNDLE</h3>
-              <p className="text-[10px] font-bold text-[#0a0a0a]/80">Unlocks all 8 dynamic workspace environments at once</p>
+              <p className="text-[10px] font-bold text-[#0a0a0a]/80">Unlocks all 7 remaining workspace environments at once</p>
             </div>
             <div className="p-3 bg-white flex justify-center">
               <button
                 id="room-bundle-bix"
                 onClick={onBuyBundleRooms}
-                disabled={state.bixBalance < 4800}
+                disabled={state.bixBalance < 5000}
                 className={`w-full py-2.5 bg-[#22c55e] text-[#0a0a0a] text-xs font-black uppercase rounded-lg border-2 border-stone-900 ${
-                  state.bixBalance < 4800
+                  state.bixBalance < 5000
                     ? 'opacity-40 cursor-not-allowed'
                     : 'hover:bg-emerald-400 hover:shadow-[2px_2px_0px_0px_rgba(10,10,10,1)] transition-all cursor-pointer'
                 }`}
               >
-                Unlock All Workspaces • 4,800 Bix 🪙
+                Unlock All Workspaces • 5,000 Bix 🪙 (Save 2,000 Bix)
               </button>
             </div>
           </div>
@@ -399,6 +345,15 @@ export const ShopView: React.FC<ShopViewProps> = ({
                       </span>
                     )}
                   </div>
+                </div>
+
+                {/* Visual Preview Picture */}
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-[9px] font-mono font-bold text-stone-500 uppercase">
+                    <span>ROOM PREVIEW</span>
+                    <span>{owned ? 'ACTIVE ARCHITECTURE' : 'VISUAL MOCKUP'}</span>
+                  </div>
+                  <RoomPreviewThumbnail roomId={room.id} isOwned={owned} className="w-full" />
                 </div>
 
                 {/* Specialty perk strip */}

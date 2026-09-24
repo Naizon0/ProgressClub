@@ -12,15 +12,6 @@ import RatingModal, { PLAY_STORE_URL } from './components/RatingModal';
 import WalkthroughModal from './components/WalkthroughModal';
 import FeedbackModal from './components/FeedbackModal';
 import BixLossModal from './components/BixLossModal';
-import MembershipModal from './components/MembershipModal';
-import {
-  executePlayStoreRestore,
-  openPlayStoreSubscriptionManager,
-  isMedianAvailable,
-  getPlayStoreSKUs,
-  setPlayStoreSKUs,
-  detectBillingEnvironment,
-} from './utils/medianBilling';
 import {
   Sun,
   Moon,
@@ -154,24 +145,6 @@ export default function App() {
   const [ratingMilestoneReason, setRatingMilestoneReason] = useState('building steady focus streaks');
   const [showWalkthroughModal, setShowWalkthroughModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
-  const [showMembershipModal, setShowMembershipModal] = useState(false);
-  const [showSkuConfigModal, setShowSkuConfigModal] = useState(false);
-  const [skuConfig, setSkuConfig] = useState(getPlayStoreSKUs());
-  const [billingEnv, setBillingEnv] = useState<{ label: string; isNative: boolean; description: string }>({
-    label: 'Checking Google Play connection...',
-    isNative: false,
-    description: '',
-  });
-
-  useEffect(() => {
-    detectBillingEnvironment().then((info) => {
-      setBillingEnv({
-        label: info.label,
-        isNative: info.isNativePlayBilling,
-        description: info.description,
-      });
-    });
-  }, [showSkuConfigModal, showMembershipModal]);
 
   // Tracking temporary states
   const [currentJournalQuestion, setCurrentJournalQuestion] = useState('');
@@ -631,50 +604,6 @@ export default function App() {
     }, 400);
   };
 
-  // Handle joining or switching Executive Membership
-  const handleJoinExecutive = (plan: 'weekly' | 'monthly' | 'yearly') => {
-    const updatedRooms = [...new Set([...(state.ownedRooms || ['rooftop']), 'deepspace'])];
-    const updated: AppState = {
-      ...state,
-      subscriptionPlan: plan,
-      isExecutive: true,
-      ownedRooms: updatedRooms,
-    };
-    saveState(updated);
-  };
-
-  // Handle restoring in-app purchases via Google Play
-  const handleRestorePurchases = async () => {
-    try {
-      const result = await executePlayStoreRestore();
-      if (result.success && result.restoredPlan) {
-        const updatedRooms = [...new Set([...(state.ownedRooms || ['rooftop']), 'deepspace'])];
-        const updated: AppState = {
-          ...state,
-          subscriptionPlan: result.restoredPlan,
-          isExecutive: true,
-          ownedRooms: updatedRooms,
-        };
-        saveState(updated);
-        alert(`✨ ${result.message}`);
-      } else {
-        alert(result.message || 'No active Google Play subscription found.');
-      }
-    } catch (e: any) {
-      alert(`Error restoring purchases: ${e?.message || e}`);
-    }
-  };
-
-  // Handle canceling subscription via Google Play Subscriptions
-  const handleCancelSubscription = () => {
-    const shouldManage = window.confirm(
-      'Google Play requires subscriptions to be managed through your Google Play account.\n\nOpen Google Play Subscriptions now to cancel or update your plan?'
-    );
-    if (shouldManage) {
-      openPlayStoreSubscriptionManager();
-    }
-  };
-
   // Timer Tick implementation with background timestamp resilience
   const startTimer = () => {
     if (timerIsActive) return;
@@ -804,10 +733,10 @@ export default function App() {
   // Session Completion details
   const handleSessionCompletion = () => {
     const minutesFocused = timerDuration;
-    // Executive tier gets 2 Bix per minute, otherwise 1 Bix
-    // Monument character gives double Bix passive
+    // Bix rate: 2 Bix for every 1 minute focused
+    // Monument character gives double Bix passive bonus
     const characterMultiplier = state.currentActiveCharacter === 'monument' ? 2 : 1;
-    const bixEarned = minutesFocused * (state.isExecutive ? 2 : 1) * characterMultiplier;
+    const bixEarned = minutesFocused * 2 * characterMultiplier;
     setJustEarnedBix(bixEarned);
 
     const completedTodayBefore = state.completedDates.includes(todayLocalDateStr);
@@ -1048,11 +977,11 @@ export default function App() {
   };
 
   const handleBuyBundleRooms = () => {
-    if (state.bixBalance < 4800) return;
+    if (state.bixBalance < 5000) return;
     const roomIds = ROOMS.map(r => r.id);
     const updated: AppState = {
       ...state,
-      bixBalance: state.bixBalance - 4800,
+      bixBalance: state.bixBalance - 5000,
       ownedRooms: Array.from(new Set([...state.ownedRooms, ...roomIds])),
     };
     saveState(updated);
@@ -1201,7 +1130,7 @@ export default function App() {
     await sendSessionDoneNotification({
       username: state.username,
       minutes: timerDuration || state.settings?.durationDefault || 25,
-      bixEarned: (timerDuration || state.settings?.durationDefault || 25) * (state.isExecutive ? 2 : 1),
+      bixEarned: (timerDuration || state.settings?.durationDefault || 25) * 2,
       characterName: state.currentActiveCharacter,
       force: true,
     });
@@ -1259,7 +1188,9 @@ export default function App() {
   const isBixAtRisk = !isCompletedTodayValue && currentHour >= 20;
 
   return (
-    <div className={`min-h-screen bg-[#fafafa] dark:bg-[#121214] text-[#0a0a0a] dark:text-zinc-100 flex flex-col items-center justify-start pb-20 ${timerIsActive ? 'border-[3px] border-[#22c55e]' : ''}`} id="applet-viewport">
+    <div className={`min-h-screen app-textured-bg text-[#0a0a0a] dark:text-zinc-100 flex flex-col items-center justify-start pb-20 relative overflow-x-hidden ${timerIsActive ? 'border-[3px] border-[#22c55e]' : ''}`} id="applet-viewport">
+      {/* Tactile textured paper/matte slate ambient grain overlay */}
+      <div className="fixed inset-0 pointer-events-none textured-noise-pattern z-0 opacity-40 dark:opacity-25" aria-hidden="true" />
       
       {/* FLOATING TRIGGER NOTIFICATION TOAST */}
       {triggerNotificationToast && (
@@ -1308,18 +1239,9 @@ export default function App() {
         <div className="flex flex-col">
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] uppercase tracking-widest font-mono font-bold text-[#1a1a1a]/60 dark:text-zinc-400">PROGRESS CLUB SYSTEM</span>
-            {state.isExecutive && (
-              <button
-                type="button"
-                id="header-executive-badge-btn"
-                onClick={() => setShowMembershipModal(true)}
-                className="bg-amber-400 dark:bg-amber-500 text-black text-[9px] font-black uppercase px-1.5 py-0.5 rounded flex items-center gap-0.5 border border-black shadow-2xs hover:scale-105 transition-transform cursor-pointer"
-                title="Executive Pass Active (2x Bix Multiplier)"
-              >
-                <Crown className="w-2.5 h-2.5 fill-black" />
-                <span>EXECUTIVE</span>
-              </button>
-            )}
+            <span className="bg-[#22c55e]/15 text-[#22c55e] border border-[#22c55e]/40 text-[9px] font-black uppercase px-1.5 py-0.2 rounded flex items-center gap-1 shadow-2xs">
+              ⚡ 2 BIX / MIN
+            </span>
           </div>
           {timerIsActive ? (
             <span className="text-[#22c55e] text-xs font-bold animate-ping uppercase tracking-widest">• focusing...</span>
@@ -1328,17 +1250,6 @@ export default function App() {
           )}
         </div>
         <div className="flex items-center space-x-2">
-          {!state.isExecutive && (
-            <button
-              type="button"
-              id="header-get-pass-btn"
-              onClick={() => setShowMembershipModal(true)}
-              className="text-[10px] font-black uppercase bg-gradient-to-r from-amber-400 to-yellow-400 text-black px-2 py-1 rounded-full border border-black shadow-xs hover:from-amber-300 hover:to-yellow-300 cursor-pointer flex items-center gap-1 active:translate-y-px transition-all"
-            >
-              <Crown className="w-3 h-3 fill-black" />
-              <span>Pass</span>
-            </button>
-          )}
           {state.streakShields > 0 ? (
             <span
               className="text-xs bg-black dark:bg-zinc-800 text-[#22c55e] border border-[#2a2a2a] dark:border-zinc-700 px-2 py-0.5 rounded-full flex items-center space-x-1"
@@ -2014,7 +1925,6 @@ export default function App() {
           <StatsView
             state={state}
             onOpenShop={() => setActiveTab('shop')}
-            onUnlockExecutive={() => setShowMembershipModal(true)}
             onAddJournalEntry={(question, answer) => {
               const newEntry = {
                 date: getLocalDateString(),
@@ -2201,7 +2111,6 @@ export default function App() {
             onBuyBundleRooms={handleBuyBundleRooms}
             onPurchaseRoomItemBix={handlePurchaseRoomItemBix}
             onToggleRoomItem={handleToggleRoomItem}
-            onOpenMembershipModal={() => setShowMembershipModal(true)}
           />
         )}
 
@@ -2580,109 +2489,35 @@ export default function App() {
               </button>
             </div>
 
-            {/* MEMBERSHIP & PASS SETTINGS */}
+            {/* FOCUS REWARD ENGINE & CLUB ECONOMY */}
             <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-5 rounded-2xl space-y-4 shadow-xs">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-black text-[#22c55e] uppercase tracking-widest block">
-                  MEMBERSHIP & PASS
+                  FOCUS REWARD ENGINE & CLUB ECONOMY
                 </span>
-                {state.isExecutive ? (
-                  <span className="text-[9px] font-black uppercase bg-[#22c55e] text-black px-2 py-0.5 rounded-full border border-black shadow-xs flex items-center gap-1">
-                    <Crown className="w-2.5 h-2.5 fill-black" />
-                    <span>EXECUTIVE ACTIVE</span>
-                  </span>
-                ) : (
-                  <span className="text-[9px] font-bold uppercase bg-stone-100 text-stone-600 dark:bg-zinc-800 dark:text-zinc-400 px-2 py-0.5 rounded border border-stone-200 dark:border-zinc-700">
-                    STANDARD FREE TIER
-                  </span>
-                )}
+                <span className="text-[9px] font-black uppercase bg-[#22c55e] text-black px-2.5 py-0.5 rounded-full border border-black shadow-xs">
+                  100% FREE
+                </span>
               </div>
 
-              {state.isExecutive ? (
-                <div className="bg-gradient-to-br from-amber-50 to-amber-100/40 dark:from-amber-950/20 dark:to-amber-900/10 border-2 border-amber-400 dark:border-amber-500/60 p-4 rounded-xl space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h4 className="text-xs font-black uppercase text-amber-950 dark:text-amber-200 flex items-center gap-1.5">
-                        <Crown className="w-3.5 h-3.5 text-amber-600 fill-amber-500" />
-                        Executive Pass • {state.subscriptionPlan.toUpperCase()}
-                      </h4>
-                      <p className="text-[11px] text-amber-900/80 dark:text-amber-300/80 font-medium mt-0.5">
-                        Active VIP benefits: 2x Bix multiplier, VIP Deep Space cabin, Executive habit velocity forecasts.
-                      </p>
-                    </div>
+              <div className="bg-stone-50 dark:bg-zinc-800/60 border-2 border-stone-200 dark:border-zinc-700 p-4 rounded-xl space-y-3">
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-lg border border-stone-200 dark:border-zinc-700">
+                    <span className="text-[8px] font-black uppercase text-stone-500 block">Focus Earning Rate</span>
+                    <span className="text-sm font-black text-[#22c55e]">2 Bix / min</span>
                   </div>
-
-                  <div className="flex items-center gap-2 pt-1">
-                    <button
-                      type="button"
-                      id="settings-manage-plan-btn"
-                      onClick={() => setShowMembershipModal(true)}
-                      className="flex-1 py-2 bg-white dark:bg-zinc-800 hover:bg-stone-50 dark:hover:bg-zinc-700 text-[#0a0a0a] dark:text-zinc-100 text-xs font-black uppercase rounded-lg border border-stone-900 dark:border-zinc-600 shadow-xs active:translate-y-px transition-all cursor-pointer text-center"
-                    >
-                      Change Plan
-                    </button>
-                    <button
-                      type="button"
-                      id="settings-cancel-sub-btn"
-                      onClick={handleCancelSubscription}
-                      className="py-2 px-3 bg-stone-100 dark:bg-zinc-800 hover:bg-red-50 text-red-600 text-xs font-bold uppercase rounded-lg border border-stone-300 dark:border-zinc-700 hover:border-red-300 transition-colors cursor-pointer"
-                    >
-                      Cancel
-                    </button>
+                  <div className="bg-white dark:bg-zinc-900 p-2.5 rounded-lg border border-stone-200 dark:border-zinc-700">
+                    <span className="text-[8px] font-black uppercase text-stone-500 block">Workspace Cost</span>
+                    <span className="text-sm font-black text-amber-600">1,000 Bix</span>
                   </div>
                 </div>
-              ) : (
-                <div className="bg-stone-50 dark:bg-zinc-800/60 border-2 border-dashed border-stone-300 dark:border-zinc-700 p-4 rounded-xl space-y-3">
-                  <div>
-                    <h4 className="text-xs font-black uppercase text-[#0a0a0a] dark:text-zinc-100 flex items-center gap-1.5">
-                      <Crown className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
-                      Executive Club Membership
-                    </h4>
-                    <p className="text-xs text-stone-600 dark:text-zinc-400 mt-1 leading-relaxed">
-                      Upgrade to unlock the 2x Bix earnings multiplier, access the VIP Deep Space cabin, and review advanced habit analytics.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    id="settings-upgrade-membership-btn"
-                    onClick={() => setShowMembershipModal(true)}
-                    className="w-full py-2.5 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 text-black text-xs font-black uppercase rounded-xl border-2 border-stone-900 shadow-xs cursor-pointer active:translate-y-px transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <Crown className="w-3.5 h-3.5 fill-black" />
-                    <span>Join Executive Club ($12/yr, $5.50/mo, or $1.50/wk)</span>
-                  </button>
+                <p className="text-xs text-stone-600 dark:text-zinc-400 leading-relaxed">
+                  Everything in Progress Club is 100% free and obtainable purely through your focus time. No paid subscriptions, no microtransactions.
+                </p>
+                <div className="flex justify-between items-center text-xs font-bold pt-2 border-t border-stone-200 dark:border-zinc-700">
+                  <span className="text-stone-600 dark:text-zinc-400">Current Balance:</span>
+                  <span className="font-black text-[#22c55e] text-sm">🪙 {state.bixBalance} Bix</span>
                 </div>
-              )}
-
-              <div className="pt-1 flex flex-col items-center gap-1.5 border-t border-stone-200 dark:border-zinc-800">
-                <button
-                  type="button"
-                  id="settings-restore-purchases-btn"
-                  onClick={handleRestorePurchases}
-                  className="text-[11px] font-bold text-stone-500 dark:text-zinc-400 hover:text-stone-800 dark:hover:text-zinc-200 underline cursor-pointer text-center w-full"
-                >
-                  Restore Google Play Purchases
-                </button>
-
-                {state.isExecutive && (
-                  <button
-                    type="button"
-                    id="settings-manage-google-play-btn"
-                    onClick={() => openPlayStoreSubscriptionManager()}
-                    className="text-[11px] font-bold text-amber-700 dark:text-amber-400 hover:underline cursor-pointer text-center w-full"
-                  >
-                    Manage Google Play Subscription ↗
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  id="settings-sku-config-btn"
-                  onClick={() => setShowSkuConfigModal(true)}
-                  className="text-[10px] text-stone-400 dark:text-zinc-500 hover:text-stone-700 dark:hover:text-zinc-300 cursor-pointer pt-1"
-                >
-                  ⚙️ Google Play SKUs & Median Status
-                </button>
               </div>
             </div>
 
@@ -2795,7 +2630,7 @@ export default function App() {
 
       {/* 1. Onboarding Overlay */}
       {activeOverlay === 'onboarding' && (
-        <div className="fixed inset-0 z-50 bg-white dark:bg-[#121214] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 app-textured-bg flex items-center justify-center p-4 overflow-y-auto">
           <Onboarding onComplete={handleOnboardingComplete} />
         </div>
       )}
@@ -3185,126 +3020,6 @@ export default function App() {
         onClose={() => setShowFeedbackModal(false)}
         username={state.username}
       />
-
-      {/* 14. Executive Club Membership Modal */}
-      <MembershipModal
-        isOpen={showMembershipModal}
-        onClose={() => setShowMembershipModal(false)}
-        currentPlan={state.subscriptionPlan}
-        isExecutive={state.isExecutive}
-        onSelectPlan={handleJoinExecutive}
-        onRestorePurchases={handleRestorePurchases}
-      />
-
-      {/* 15. Google Play SKU & Median Bridge Configuration Modal */}
-      {showSkuConfigModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-150"
-        >
-          <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-2xl w-full max-w-sm p-5 space-y-4 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-stone-200 dark:border-zinc-800 pb-3">
-              <div>
-                <h3 className="text-sm font-black uppercase text-[#0a0a0a] dark:text-zinc-100 flex items-center gap-1.5">
-                  <span>🤖</span> Google Play Billing Setup
-                </h3>
-                <p className="text-[10px] text-stone-500">Free PWABuilder / TWA & Median Supported</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSkuConfigModal(false)}
-                className="text-stone-400 hover:text-black dark:hover:text-white text-xs font-bold p-1 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Status indicator */}
-            <div className="p-3 bg-stone-50 dark:bg-zinc-800/80 rounded-xl text-xs space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-stone-600 dark:text-zinc-400">Play Billing:</span>
-                <span
-                  className={`text-[10px] font-black uppercase px-2 py-0.5 rounded border ${
-                    billingEnv.isNative
-                      ? 'bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-700'
-                      : 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-700'
-                  }`}
-                >
-                  {billingEnv.isNative ? '🟢 ' + billingEnv.label : '🌐 ' + billingEnv.label}
-                </span>
-              </div>
-              <p className="text-[10px] text-stone-500 dark:text-zinc-400 mt-1 leading-relaxed">
-                {billingEnv.description}
-              </p>
-            </div>
-
-            {/* SKU inputs */}
-            <div className="space-y-3">
-              <div>
-                <label className="text-[10px] font-bold uppercase text-stone-600 dark:text-zinc-400 block mb-1">
-                  Yearly SKU (Play Console)
-                </label>
-                <input
-                  type="text"
-                  value={skuConfig.yearly}
-                  onChange={(e) => setSkuConfig({ ...skuConfig, yearly: e.target.value })}
-                  className="w-full text-xs font-mono px-3 py-2 bg-stone-100 dark:bg-zinc-800 rounded-lg border border-stone-300 dark:border-zinc-700 text-[#0a0a0a] dark:text-zinc-100"
-                  placeholder="e.g. progressclub_yearly"
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase text-stone-600 dark:text-zinc-400 block mb-1">
-                  Monthly SKU (Play Console)
-                </label>
-                <input
-                  type="text"
-                  value={skuConfig.monthly}
-                  onChange={(e) => setSkuConfig({ ...skuConfig, monthly: e.target.value })}
-                  className="w-full text-xs font-mono px-3 py-2 bg-stone-100 dark:bg-zinc-800 rounded-lg border border-stone-300 dark:border-zinc-700 text-[#0a0a0a] dark:text-zinc-100"
-                  placeholder="e.g. progressclub_monthly"
-                />
-              </div>
-
-              <div>
-                <label className="text-[10px] font-bold uppercase text-stone-600 dark:text-zinc-400 block mb-1">
-                  Weekly SKU (Play Console)
-                </label>
-                <input
-                  type="text"
-                  value={skuConfig.weekly}
-                  onChange={(e) => setSkuConfig({ ...skuConfig, weekly: e.target.value })}
-                  className="w-full text-xs font-mono px-3 py-2 bg-stone-100 dark:bg-zinc-800 rounded-lg border border-stone-300 dark:border-zinc-700 text-[#0a0a0a] dark:text-zinc-100"
-                  placeholder="e.g. progressclub_weekly"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setPlayStoreSKUs(skuConfig);
-                  setShowSkuConfigModal(false);
-                  alert('✅ Google Play Product SKUs saved successfully.');
-                }}
-                className="flex-1 py-2.5 bg-[#22c55e] hover:bg-emerald-400 text-black text-xs font-black uppercase rounded-xl border border-black cursor-pointer shadow-xs active:translate-y-px"
-              >
-                Save SKUs
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowSkuConfigModal(false)}
-                className="py-2.5 px-4 bg-stone-100 dark:bg-zinc-800 text-stone-600 dark:text-zinc-300 text-xs font-bold uppercase rounded-xl border border-stone-300 dark:border-zinc-700 cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
