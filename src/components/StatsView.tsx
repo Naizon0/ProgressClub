@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AppState } from '../types';
 import { RANKS } from '../data';
 import CrewCharacter from './CrewCharacter';
+import ProgressVisualizer from './ProgressVisualizer';
 
 // Helper: Get local Date string as YYYY-MM-DD
 function getLocalDateString(): string {
@@ -462,7 +463,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
       {/* Tracker tab content */}
       {activeTab === 'tracker' && (
         <div className="space-y-4">
-          {renderChallengeGrid()}
+          <ProgressVisualizer state={state} onOpenShop={onOpenShop} />
           
           <div className="bg-white border-2 border-[#2a2a2a] p-5 rounded-xl space-y-4">
             <h4 className="text-xs font-black tracking-widest text-[#0a0a0a] uppercase">Friendly Rivalry Duel</h4>

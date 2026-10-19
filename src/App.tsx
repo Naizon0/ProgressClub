@@ -12,6 +12,7 @@ import RatingModal, { PLAY_STORE_URL } from './components/RatingModal';
 import WalkthroughModal from './components/WalkthroughModal';
 import FeedbackModal from './components/FeedbackModal';
 import BixLossModal from './components/BixLossModal';
+import ProgressVisualizer from './components/ProgressVisualizer';
 import {
   Sun,
   Moon,
@@ -1307,25 +1308,37 @@ export default function App() {
         {activeTab === 'home' && (
           <div className="space-y-6">
             
-            {/* Header profile statistics title */}
-            <div className="text-left select-none">
-              <h1 className="text-lg font-black tracking-tight text-[#0a0a0a] dark:text-zinc-100">
-                {state.username}'S PROGRESS CLUB | DAY {currentDayXOfChallenge} OF {state.challengeLength}
-              </h1>
-              <div className="flex items-center space-x-1.5 flex-wrap mt-0.5">
-                <span className="text-xs font-bold text-[#22c55e] uppercase">
-                  {getCurrentRankName(state.totalFocusedMinutes)} MEMBER
-                </span>
-                <span className="text-stone-300 dark:text-zinc-600 text-xs">•</span>
-                <span className="text-xs font-semibold text-[#1a1a1a]/65 dark:text-zinc-400 uppercase">
-                  {state.completedDates.length} completed
-                </span>
-                <span className="text-stone-300 dark:text-zinc-600 text-xs">•</span>
-                <span className="text-xs font-bold text-amber-500 uppercase flex items-center space-x-0.5">
-                  <span>🔥</span>
-                  <span>{getChallengeStreak(state.completedDates)} DAY STREAK</span>
-                </span>
+            {/* Header profile statistics title & feature guide button */}
+            <div className="flex items-center justify-between select-none">
+              <div className="text-left">
+                <h1 className="text-lg font-black tracking-tight text-[#0a0a0a] dark:text-zinc-100">
+                  {state.username}'S PROGRESS CLUB | DAY {currentDayXOfChallenge} OF {state.challengeLength}
+                </h1>
+                <div className="flex items-center space-x-1.5 flex-wrap mt-0.5">
+                  <span className="text-xs font-bold text-[#22c55e] uppercase">
+                    {getCurrentRankName(state.totalFocusedMinutes)} MEMBER
+                  </span>
+                  <span className="text-stone-300 dark:text-zinc-600 text-xs">•</span>
+                  <span className="text-xs font-semibold text-[#1a1a1a]/65 dark:text-zinc-400 uppercase">
+                    {state.completedDates.length} completed
+                  </span>
+                  <span className="text-stone-300 dark:text-zinc-600 text-xs">•</span>
+                  <span className="text-xs font-bold text-amber-500 uppercase flex items-center space-x-0.5">
+                    <span>🔥</span>
+                    <span>{getChallengeStreak(state.completedDates)} DAY STREAK</span>
+                  </span>
+                </div>
               </div>
+              <button
+                type="button"
+                id="header-open-guide-btn"
+                onClick={() => setShowWalkthroughModal(true)}
+                title="Open feature guide on timer & journal prompts"
+                className="px-2.5 py-1.5 bg-white dark:bg-zinc-800 hover:bg-stone-100 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-300 text-[10px] font-black uppercase rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 shrink-0 cursor-pointer shadow-xs active:translate-y-px flex items-center gap-1"
+              >
+                <span>📖</span>
+                <span>Tour</span>
+              </button>
             </div>
 
             {/* 1-TAP FRICTIONLESS QUICK START BAR */}
@@ -1366,6 +1379,15 @@ export default function App() {
               onUpdateItemPosition={handleUpdateItemPosition}
               todaysOneThing={state.todaysOneThing?.date === todayLocalDateStr ? state.todaysOneThing : undefined}
             />
+
+            {/* Visual Progress Trail Snapshot (Clicking navigates to interactive stats expedition) */}
+            <div
+              onClick={() => setActiveTab('stats')}
+              className="cursor-pointer transition-transform active:scale-[0.99]"
+              title="Click to view full habit expedition trail"
+            >
+              <ProgressVisualizer state={state} onOpenShop={() => setActiveTab('shop')} compact={true} />
+            </div>
 
             {/* TODAY'S ONE THING PRIORITY CARD */}
             <div className={`p-4 rounded-2xl transition-all text-left space-y-3 ${
@@ -2473,15 +2495,15 @@ export default function App() {
                 className="w-full p-3.5 bg-stone-50 dark:bg-zinc-800 hover:bg-stone-100 dark:hover:bg-zinc-700 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-xl flex items-center justify-between transition-colors cursor-pointer"
               >
                 <div className="flex items-center gap-3 text-left">
-                  <div className="p-2 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded-lg">
+                  <div className="p-2 bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 rounded-lg">
                     <HelpCircle className="w-4 h-4" aria-hidden="true" />
                   </div>
                   <div>
                     <h4 className="text-xs font-black uppercase text-[#0a0a0a] dark:text-zinc-100">
-                      Replay Feature Walkthrough
+                      App Tour & Feature Guide
                     </h4>
                     <p className="text-[10px] text-stone-500 dark:text-zinc-400">
-                      Review Timer, Streak Shields, Bix & Cabin guide
+                      Learn how to effectively utilize the timer, journal prompts & habit trail
                     </p>
                   </div>
                 </div>
@@ -2637,46 +2659,83 @@ export default function App() {
 
       {/* 2. Journaling Post Session Overlay */}
       {activeOverlay === 'journaling' && (
-        <div className="fixed inset-0 z-50 bg-white dark:bg-[#18181b] flex flex-col justify-between p-6">
-          <div className="text-left mt-10">
-            <span className="text-xs font-bold text-[#1a1a1a]/45 dark:text-zinc-400 uppercase tracking-widest">
-              SESSION COMPLETE HABIT LOG
-            </span>
-            <h1 className="text-3xl font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tight mt-2" id="journal-question-label">
-              {currentJournalQuestion}
-            </h1>
-            
-            <div className="mt-8">
+        <div className="fixed inset-0 z-50 bg-white dark:bg-[#18181b] flex flex-col justify-between p-6 overflow-y-auto">
+          <div className="text-left mt-6 max-w-md mx-auto w-full space-y-4">
+            <div>
+              <span className="text-xs font-black text-[#22c55e] uppercase tracking-widest bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-800 px-2 py-0.5 rounded">
+                ⚡ MINDFUL REFLECTION • POST-SESSION HABIT LOG
+              </span>
+              <h1 className="text-2xl font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tight mt-2" id="journal-question-label">
+                {currentJournalQuestion}
+              </h1>
+            </div>
+
+            {/* Science micro-tip */}
+            <div className="bg-emerald-50/70 dark:bg-emerald-950/40 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800/70 text-[11px] text-emerald-950 dark:text-emerald-200 font-medium">
+              💡 <strong>Pro-Tip:</strong> Just 1 honest sentence locks in your focus dopamine and builds long-term neuroplastic memory.
+            </div>
+
+            {/* Quick 1-tap reflection suggestion chips */}
+            <div className="space-y-1">
+              <span className="text-[9px] font-black uppercase text-stone-400 dark:text-zinc-400">
+                Quick 1-Tap Reflections:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  '✨ Stayed locked into deep flow',
+                  '🎯 Finished today’s priority task',
+                  '📵 Muted all notifications & alerts',
+                  '💪 Overcame starting resistance',
+                ].map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => {
+                      if (!journalText) {
+                        setJournalText(chip);
+                      } else {
+                        setJournalText(`${journalText}. ${chip}`);
+                      }
+                    }}
+                    className="text-[10px] font-bold bg-stone-100 dark:bg-zinc-800 hover:bg-emerald-100 dark:hover:bg-zinc-700 text-stone-800 dark:text-zinc-200 px-2.5 py-1 rounded-lg border border-stone-300 dark:border-zinc-700 cursor-pointer active:scale-95 transition-all"
+                  >
+                    + {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
               <textarea
                 value={journalText}
                 onChange={(e) => setJournalText(e.target.value)}
-                placeholder="Write your brief thoughts..."
+                placeholder="Write your brief reflection (e.g. what you accomplished or what distraction you overcame)..."
                 aria-label="Session habit journal response"
-                className="w-full bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 h-32 p-4 rounded-xl outline-hidden font-medium text-[#0a0a0a] dark:text-zinc-100 focus:ring-2 focus:ring-[#22c55e]"
+                className="w-full bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 h-28 p-3.5 rounded-xl outline-hidden font-medium text-sm text-[#0a0a0a] dark:text-zinc-100 focus:ring-2 focus:ring-[#22c55e]"
                 maxLength={400}
                 autoFocus
               ></textarea>
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3 max-w-md mx-auto w-full pt-2">
             <button
               id="save-journal-btn"
               aria-label="Save habit journal entry"
               onClick={handleSaveJournal}
               disabled={!journalText.trim()}
-              className={`w-full py-4 text-center text-sm font-black uppercase tracking-widest bg-[#22c55e] text-[#0a0a0a] rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 cursor-pointer ${
-                !journalText.trim() ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-90 active:scale-95'
+              className={`w-full py-4 text-center text-xs font-black uppercase tracking-widest bg-[#22c55e] text-[#0a0a0a] rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 cursor-pointer shadow-xs ${
+                !journalText.trim() ? 'opacity-50 cursor-not-allowed' : 'hover:bg-emerald-400 active:scale-95'
               }`}
             >
-              Save It
+              Save & Log To Habit History (+25 Bonus Bix)
             </button>
             
             <button
               id="skip-journaling-btn"
               aria-label="Skip habit journal entry"
               onClick={skipJournaling}
-              className="w-full text-center text-xs text-stone-400 dark:text-zinc-500 hover:text-black dark:hover:text-white uppercase font-bold tracking-widest py-2 cursor-pointer"
+              className="w-full text-center text-xs text-stone-400 dark:text-zinc-500 hover:text-black dark:hover:text-white uppercase font-bold tracking-widest py-1.5 cursor-pointer"
             >
               skip for now &rarr;
             </button>
@@ -3010,6 +3069,14 @@ export default function App() {
       <WalkthroughModal
         isOpen={showWalkthroughModal}
         onComplete={handleWalkthroughFinished}
+        onStartKickstarterSession={(min) => {
+          handleWalkthroughFinished();
+          setTimerDuration(min);
+          setTimeLeft(min * 60);
+          setTimeout(() => {
+            startTimer();
+          }, 300);
+        }}
         username={state.username}
         characterId={state.currentActiveCharacter}
       />

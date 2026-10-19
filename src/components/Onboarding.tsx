@@ -46,6 +46,7 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
   // Quiz States
   const [nameInput, setNameInput] = useState('');
   const [greetName, setGreetName] = useState(false);
+  const [isQuickMode, setIsQuickMode] = useState(false);
   const [selectedAge, setSelectedAge] = useState('');
   const [selectedLife, setSelectedLife] = useState('');
   const [selectedFeeling, setSelectedFeeling] = useState('');
@@ -225,30 +226,171 @@ export const Onboarding: React.FC<OnboardingProps> = ({ onComplete }) => {
 
   const renderQuizStep = () => {
     switch (quizStep) {
-      case 1: // Welcome Screen
+      case 1: // Welcome Screen with Quick Onboarding Option
+        if (isQuickMode) {
+          return (
+            <div className="flex flex-col flex-1 justify-between p-6 text-left space-y-4">
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-[#22c55e] tracking-widest bg-[#22c55e]/10 px-2.5 py-1 rounded border border-[#22c55e]/25">
+                    ⚡ Quick 60-Sec Onboarding
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickMode(false)}
+                    className="text-[11px] font-bold text-stone-500 hover:text-black dark:text-zinc-400 dark:hover:text-white underline cursor-pointer"
+                  >
+                    ← Full Quiz
+                  </button>
+                </div>
+                <h1 className="text-2xl font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tight">
+                  What should we call you?
+                </h1>
+                <input
+                  id="quick-onboarding-name"
+                  type="text"
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  placeholder="Enter your first name or nickname..."
+                  maxLength={25}
+                  autoFocus
+                  className="w-full bg-white dark:bg-zinc-800 border-2 border-[#2a2a2a] dark:border-zinc-700 py-3 px-4 rounded-xl text-base font-bold text-[#0a0a0a] dark:text-zinc-100 outline-none focus:ring-2 focus:ring-[#22c55e]"
+                />
+              </div>
+
+              {/* Select starting habit */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-black uppercase text-stone-500 dark:text-zinc-400">
+                  Select your primary daily focus habit:
+                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'Deep Work Session', label: '💻 Deep Work', desc: 'Coding, writing, design' },
+                    { id: 'Daily Reading', label: '📚 Book Reading', desc: '15-20 mins daily' },
+                    { id: 'Workout & Fitness', label: '🏋️ Fitness', desc: 'Daily body movement' },
+                    { id: 'Study Routine', label: '🧠 Study Focus', desc: 'Learning & research' },
+                  ].map((preset) => {
+                    const isSelected = selectedGoals.includes(preset.id);
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedGoals(selectedGoals.filter((g) => g !== preset.id));
+                          } else {
+                            setSelectedGoals([...selectedGoals, preset.id]);
+                          }
+                        }}
+                        className={`p-2.5 rounded-xl border-2 text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#22c55e]/15 border-[#22c55e] text-[#0a0a0a] dark:text-zinc-100 shadow-xs'
+                            : 'bg-white dark:bg-zinc-800 border-stone-200 dark:border-zinc-700 text-stone-700 dark:text-zinc-300'
+                        }`}
+                      >
+                        <p className="text-xs font-black uppercase">{preset.label}</p>
+                        <p className="text-[9px] text-stone-500 dark:text-zinc-400 mt-0.5">{preset.desc}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="py-2 flex items-center justify-center">
+                <CrewCharacter characterId="cipher" pose="idle" height={100} />
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <button
+                  type="button"
+                  id="quick-start-submit-btn"
+                  onClick={() => {
+                    const finalName = nameInput.trim() || 'Focus Hero';
+                    const finalGoals = selectedGoals.length > 0 ? selectedGoals : ['Deep Work Focus', 'Daily Reading'];
+                    onComplete({
+                      username: finalName,
+                      quizAnswers: {
+                        name: finalName,
+                        lifeDirection: 'building momentum',
+                        currentFeeling: 'ready',
+                        biggestStruggle: 'distractions',
+                        distractionHours: '5 to 10 hours',
+                        valueOfTime: 'valuable',
+                      },
+                      subscriptionPlan: 'yearly',
+                      isExecutive: true,
+                      recommendedCharacter: 'cipher',
+                      recommendedRoom: 'rooftop',
+                      dailyGoals: finalGoals,
+                    });
+                  }}
+                  className="w-full py-4 text-center text-xs font-black uppercase tracking-wider bg-[#22c55e] hover:bg-emerald-400 text-[#0a0a0a] rounded-xl border-2 border-[#2a2a2a] cursor-pointer shadow-xs active:translate-y-px transition-all"
+                >
+                  ⚡ Start My Focus & Tour App Features
+                </button>
+                <p className="text-[10px] text-stone-500 text-center font-medium">
+                  Includes full interactive tour of timer & journal prompts
+                </p>
+              </div>
+            </div>
+          );
+        }
+
         return (
-          <div className="flex flex-col flex-1 justify-between p-6">
-            <div className="text-left mt-10">
-              <span className="text-xs font-black uppercase text-[#22c55e] tracking-widest bg-[#22c55e]/10 px-2.5 py-1 rounded border border-[#22c55e]/25">Focus Placement Test</span>
-              <h1 className="text-4xl font-extrabold tracking-tight text-[#0a0a0a] uppercase mb-4 mt-3">
-                before we get started.
+          <div className="flex flex-col flex-1 justify-between p-6 text-left">
+            <div className="mt-6 space-y-2">
+              <span className="text-xs font-black uppercase text-[#22c55e] tracking-widest bg-[#22c55e]/10 px-2.5 py-1 rounded border border-[#22c55e]/25">
+                Welcome to Progress Club
+              </span>
+              <h1 className="text-3xl font-black tracking-tight text-[#0a0a0a] dark:text-zinc-100 uppercase mt-2">
+                Choose your onboarding:
               </h1>
-              <p className="text-lg text-[#1a1a1a]/70">
-                we want to evaluate your starting level. take this placement test to find your ideal focus workspace and earn your starting companion character.
+              <p className="text-xs text-stone-600 dark:text-zinc-400 leading-relaxed font-medium">
+                Jump straight into the app with a quick 60-second setup, or take our in-depth focus assessment.
               </p>
             </div>
             
-            <div className="my-6 flex justify-center">
-              <CrewCharacter characterId="cipher" pose="idle" height={150} />
+            {/* Two clean onboarding path cards */}
+            <div className="space-y-3 my-4">
+              {/* Option 1: Fast Track 60 Seconds */}
+              <button
+                type="button"
+                id="choose-quick-onboarding-btn"
+                onClick={() => setIsQuickMode(true)}
+                className="w-full p-4 rounded-2xl border-2 border-[#22c55e] bg-emerald-50/80 dark:bg-emerald-950/40 hover:bg-emerald-100 text-left transition-all cursor-pointer shadow-xs active:scale-[0.99] space-y-1.5"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-black uppercase text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5">
+                    <span>⚡</span> Quick 60-Sec Onboarding
+                  </span>
+                  <span className="text-[9px] font-black uppercase bg-[#22c55e] text-black px-2 py-0.5 rounded border border-black">
+                    Recommended
+                  </span>
+                </div>
+                <p className="text-[11px] text-stone-600 dark:text-zinc-300 font-medium leading-snug">
+                  Enter your name, pick your daily focus habit, and immediately tour how the timer & journal prompts work.
+                </p>
+              </button>
+
+              {/* Option 2: Full Placement Quiz */}
+              <button
+                type="button"
+                id="choose-full-quiz-btn"
+                onClick={() => setQuizStep(2)}
+                className="w-full p-4 rounded-2xl border-2 border-stone-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-stone-50 dark:hover:bg-zinc-700 text-left transition-all cursor-pointer space-y-1.5"
+              >
+                <span className="text-xs font-black uppercase text-[#0a0a0a] dark:text-zinc-100 flex items-center gap-1.5">
+                  <span>🎯</span> 2-Min Placement Assessment
+                </span>
+                <p className="text-[11px] text-stone-500 dark:text-zinc-400 font-medium leading-snug">
+                  8 quick questions to calculate your focus baseline, character personality match, and habit forecast.
+                </p>
+              </button>
             </div>
 
-            <button
-              id="quiz-welcome-next"
-              onClick={() => setQuizStep(2)}
-              className="w-full py-4 text-center text-sm font-bold uppercase tracking-wider bg-[#22c55e] text-[#0a0a0a] rounded-lg border border-[#2a2a2a] cursor-pointer hover:opacity-90 transition-opacity"
-            >
-              let's do it
-            </button>
+            <div className="flex justify-center scale-90">
+              <CrewCharacter characterId="cipher" pose="idle" height={110} />
+            </div>
           </div>
         );
 
