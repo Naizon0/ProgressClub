@@ -175,21 +175,21 @@ export const StatsView: React.FC<StatsViewProps> = ({
     const maxCount = 5;
 
     return (
-      <div className="bg-white border-2 border-[#2a2a2a] p-4 rounded-lg">
-        <h4 className="text-xs font-bold tracking-widest text-[#0a0a0a] uppercase mb-4">WEEKLY CONCENTRATION PACE</h4>
+      <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-4 rounded-xl">
+        <h4 className="text-xs font-bold tracking-widest text-[#0a0a0a] dark:text-amber-400 uppercase mb-4">WEEKLY CONCENTRATION PACE</h4>
         <div className="flex justify-between items-end h-32 px-2">
           {bars.map((bar, idx) => {
             const hPercent = (bar.count / maxCount) * 100;
             return (
               <div key={idx} className="flex flex-col items-center flex-grow space-y-2">
-                <span className="text-[10px] font-bold text-[#1a1a1a]/40">{bar.count}</span>
-                <div className="w-6 bg-[#eeeeee] rounded-t-xs border border-b-0 border-[#2a2a2a] h-20 relative flex items-end">
+                <span className="text-[10px] font-bold text-[#1a1a1a]/40 dark:text-zinc-400">{bar.count}</span>
+                <div className="w-6 bg-[#eeeeee] dark:bg-zinc-800 rounded-t-xs border border-b-0 border-[#2a2a2a] dark:border-zinc-700 h-20 relative flex items-end">
                   <div
-                    className="w-full bg-[#22c55e] border-t border-[#2a2a2a]"
+                    className="w-full bg-[#22c55e] border-t border-[#2a2a2a] dark:border-zinc-700"
                     style={{ height: `${Math.max(15, hPercent)}%` }}
                   ></div>
                 </div>
-                <span className="text-[10px] font-bold text-[#0a0a0a]">{bar.day}</span>
+                <span className="text-[10px] font-bold text-[#0a0a0a] dark:text-amber-400">{bar.day}</span>
               </div>
             );
           })}
@@ -207,13 +207,13 @@ export const StatsView: React.FC<StatsViewProps> = ({
     const todayStr = getLocalDateString();
 
     return (
-      <div className="bg-white border-2 border-[#2a2a2a] p-4 rounded-lg space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-[#f5f5f5] p-2.5 border border-[#2a2a2a] gap-1.5">
-          <p className="text-xs font-bold uppercase tracking-wider">{state.username}'S CALENDAR PROGRESS</p>
+      <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-4 rounded-xl space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between sm:items-center bg-[#f5f5f5] dark:bg-zinc-800 p-2.5 border border-[#2a2a2a] dark:border-zinc-700 gap-1.5 rounded-lg">
+          <p className="text-xs font-bold uppercase tracking-wider text-[#0a0a0a] dark:text-amber-400">{state.username}'S CALENDAR PROGRESS</p>
           <div className="flex items-center space-x-2 text-xs font-extrabold">
-            <span className="text-stone-500 uppercase">{completedDaysCount} Days Completed</span>
-            <span className="text-stone-300">•</span>
-            <span className="text-amber-500 uppercase flex items-center space-x-0.5">
+            <span className="text-stone-500 dark:text-zinc-400 uppercase">{completedDaysCount} Days Completed</span>
+            <span className="text-stone-300 dark:text-zinc-600">•</span>
+            <span className="text-amber-500 dark:text-amber-400 uppercase flex items-center space-x-0.5">
               <span>🔥</span>
               <span>{getChallengeStreak(state.completedDates)} DAY STREAK</span>
             </span>
@@ -297,35 +297,35 @@ export const StatsView: React.FC<StatsViewProps> = ({
   return (
     <div className="space-y-6 w-full max-w-md mx-auto">
       {/* Scoreboard Heroes Numbers */}
-      <div className="bg-white border-2 border-[#2a2a2a] rounded-xl p-5 shadow-sm text-center space-y-4">
-        <h2 className="text-xs font-black tracking-widest text-[#1a1a1a]/60 uppercase">CORE STATS SCOREBOARD</h2>
+      <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-xl p-5 shadow-sm text-center space-y-4">
+        <h2 className="text-xs font-black tracking-widest text-[#1a1a1a]/60 dark:text-zinc-400 uppercase">CORE STATS SCOREBOARD</h2>
         
         <div className="grid grid-cols-3 gap-2 py-2">
-          <div className="border border-[#2a2a2a] p-3 rounded-lg bg-[#f5f5f5]">
-            <p className="text-2xl font-black text-[#0a0a0a]">{state.totalSessionsCompleted}</p>
-            <p className="text-[10px] font-bold text-[#1a1a1a]/60 uppercase tracking-widest mt-1">SESSIONS</p>
+          <div className="border border-[#2a2a2a] dark:border-zinc-700 p-3 rounded-lg bg-[#f5f5f5] dark:bg-zinc-800">
+            <p className="text-2xl font-black text-[#0a0a0a] dark:text-amber-400">{state.totalSessionsCompleted}</p>
+            <p className="text-[10px] font-bold text-[#1a1a1a]/60 dark:text-zinc-400 uppercase tracking-widest mt-1">SESSIONS</p>
           </div>
-          <div className="border border-[#2a2a2a] p-3 rounded-lg bg-[#f5f5f5]">
-            <p className="text-2xl font-black text-[#0a0a0a]">{totalFocusedHours}</p>
-            <p className="text-[10px] font-bold text-[#1a1a1a]/60 uppercase tracking-widest mt-1">HOURS</p>
+          <div className="border border-[#2a2a2a] dark:border-zinc-700 p-3 rounded-lg bg-[#f5f5f5] dark:bg-zinc-800">
+            <p className="text-2xl font-black text-[#0a0a0a] dark:text-amber-400">{totalFocusedHours}</p>
+            <p className="text-[10px] font-bold text-[#1a1a1a]/60 dark:text-zinc-400 uppercase tracking-widest mt-1">HOURS</p>
           </div>
-          <div className="border border-[#2a2a2a] p-3 rounded-lg bg-[#f5f5f5]">
-            <p className="text-2xl font-black text-[#0a0a0a]">{completedDaysCount}</p>
-            <p className="text-[10px] font-bold text-[#1a1a1a]/60 uppercase tracking-widest mt-1">DAYS IN</p>
+          <div className="border border-[#2a2a2a] dark:border-zinc-700 p-3 rounded-lg bg-[#f5f5f5] dark:bg-zinc-800">
+            <p className="text-2xl font-black text-[#0a0a0a] dark:text-amber-400">{completedDaysCount}</p>
+            <p className="text-[10px] font-bold text-[#1a1a1a]/60 dark:text-zinc-400 uppercase tracking-widest mt-1">DAYS IN</p>
           </div>
         </div>
 
         <button
           id="copy-stats-btn"
           onClick={handleCopyStats}
-          className="w-full py-2.5 bg-[#22c55e] text-[#0a0a0a] text-xs font-bold uppercase tracking-widest rounded-lg border border-[#2a2a2a] hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+          className="w-full py-2.5 bg-[#22c55e] text-[#0a0a0a] dark:text-amber-400 text-xs font-bold uppercase tracking-widest rounded-lg border border-[#2a2a2a] dark:border-zinc-700 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
         >
           Copy stats
         </button>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-2 border-[#2a2a2a] rounded-xl overflow-hidden bg-white">
+      <div className="flex border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-xl overflow-hidden bg-white dark:bg-zinc-900">
         {(['overview', 'tracker', 'journal'] as const).map((tab) => (
           <button
             key={tab}
@@ -333,8 +333,8 @@ export const StatsView: React.FC<StatsViewProps> = ({
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-3 text-xs font-bold uppercase tracking-widest transition-all ${
               activeTab === tab
-                ? 'bg-[#22c55e] text-[#0a0a0a]'
-                : 'bg-white text-[#1a1a1a]/70 hover:bg-[#f5f5f5]'
+                ? 'bg-[#22c55e] text-[#0a0a0a] dark:text-amber-400'
+                : 'bg-white dark:bg-zinc-900 text-[#1a1a1a]/70 dark:text-zinc-400 hover:bg-[#f5f5f5] dark:hover:bg-zinc-800'
             }`}
           >
             {tab}
@@ -346,15 +346,15 @@ export const StatsView: React.FC<StatsViewProps> = ({
       {activeTab === 'overview' && (
         <div className="space-y-4">
           {/* Rank Up Progress Card */}
-          <div className="bg-white border-2 border-[#2a2a2a] p-5 rounded-xl space-y-4">
+          <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-5 rounded-xl space-y-4">
             <div className="flex justify-between items-center">
               <div>
-                <span className="text-xs text-[#1a1a1a]/60 uppercase font-black">Current Rank:</span>
+                <span className="text-xs text-[#1a1a1a]/60 dark:text-zinc-400 uppercase font-black">Current Rank:</span>
                 <p className="text-xl font-extrabold text-[#22c55e] tracking-tight">{currentRank.name}</p>
               </div>
               <div className="text-right">
-                <span className="text-xs text-[#1a1a1a]/60 uppercase font-black">Hours Spent:</span>
-                <p className="text-sm font-bold text-[#0a0a0a]">{totalFocusedHours}</p>
+                <span className="text-xs text-[#1a1a1a]/60 dark:text-zinc-400 uppercase font-black">Hours Spent:</span>
+                <p className="text-sm font-bold text-[#0a0a0a] dark:text-amber-400">{totalFocusedHours}</p>
               </div>
             </div>
 
@@ -441,10 +441,10 @@ export const StatsView: React.FC<StatsViewProps> = ({
           </div>
 
           {/* Friendly crew upsell card */}
-          <div className="bg-white border-2 border-[#2a2a2a] p-4 rounded-xl flex items-center justify-between">
+          <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-4 rounded-xl flex items-center justify-between">
             <div className="space-y-1 w-3/5">
-              <h4 className="text-xs font-black text-[#0a0a0a] uppercase tracking-wider">Meet the crew!</h4>
-              <p className="text-xs text-[#1a1a1a]/70">this one would love to join your club roster.</p>
+              <h4 className="text-xs font-black text-[#0a0a0a] dark:text-amber-400 uppercase tracking-wider">Meet the crew!</h4>
+              <p className="text-xs text-[#1a1a1a]/70 dark:text-zinc-300">this one would love to join your club roster.</p>
               <button
                 id="view-crew-upsell-btn"
                 onClick={onOpenShop}
@@ -465,46 +465,46 @@ export const StatsView: React.FC<StatsViewProps> = ({
         <div className="space-y-4">
           <ProgressVisualizer state={state} onOpenShop={onOpenShop} />
           
-          <div className="bg-white border-2 border-[#2a2a2a] p-5 rounded-xl space-y-4">
-            <h4 className="text-xs font-black tracking-widest text-[#0a0a0a] uppercase">Friendly Rivalry Duel</h4>
-            <p className="text-xs text-[#1a1a1a]/75">
+          <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-5 rounded-xl space-y-4">
+            <h4 className="text-xs font-black tracking-widest text-[#0a0a0a] dark:text-amber-400 uppercase">Friendly Rivalry Duel</h4>
+            <p className="text-xs text-[#1a1a1a]/75 dark:text-zinc-300">
               Share your room profile code with a friend and monitor each other's pace. Settle your scores in the focus arena!
             </p>
 
             {rivalData ? (
-              <div className="border border-[#2a2a2a] rounded-lg p-4 space-y-3 bg-[#fafafa]">
-                <div className="flex justify-between items-center text-xs font-bold text-[#1a1a1a]/60 border-b border-[#eeeeee] pb-2">
+              <div className="border border-[#2a2a2a] dark:border-zinc-700 rounded-lg p-4 space-y-3 bg-[#fafafa] dark:bg-zinc-800">
+                <div className="flex justify-between items-center text-xs font-bold text-[#1a1a1a]/60 dark:text-zinc-400 border-b border-[#eeeeee] dark:border-zinc-700 pb-2">
                   <span>RIVALRY ACTIVE | CODE: {rivalCode}</span>
                   <button
                     id="sever-rivalry-btn"
                     onClick={() => setRivalData(null)}
-                    className="text-stone-400 hover:text-black uppercase cursor-pointer"
+                    className="text-stone-400 hover:text-black dark:hover:text-amber-400 uppercase cursor-pointer"
                   >
                     Disconnect
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 divide-x-2 divide-[#2a2a2a]">
+                <div className="grid grid-cols-2 gap-4 divide-x-2 divide-[#2a2a2a] dark:divide-zinc-700">
                   {/* Left Side: Me */}
                   <div className="text-center space-y-2">
-                    <p className="text-xs font-extrabold text-[#0a0a0a] uppercase">YOU</p>
+                    <p className="text-xs font-extrabold text-[#0a0a0a] dark:text-amber-400 uppercase">YOU</p>
                     <div className="flex justify-center h-16">
                       <CrewCharacter characterId={state.currentActiveCharacter} pose="idle" height={60} />
                     </div>
                     <div className="space-y-0.5">
-                      <p className="text-lg font-black text-[#0a0a0a]">Day {completedDaysCount}</p>
+                      <p className="text-lg font-black text-[#0a0a0a] dark:text-amber-400">Day {completedDaysCount}</p>
                       <p className="text-[10px] font-bold text-[#22c55e] uppercase">{currentRank.name}</p>
                     </div>
                   </div>
 
                   {/* Right Side: Friend */}
                   <div className="text-center space-y-2 pl-4">
-                    <p className="text-xs font-extrabold text-[#0a0a0a] uppercase">{rivalData.name}</p>
+                    <p className="text-xs font-extrabold text-[#0a0a0a] dark:text-amber-400 uppercase">{rivalData.name}</p>
                     <div className="flex justify-center h-16">
                       <CrewCharacter characterId={rivalData.charId} pose="idle" height={60} />
                     </div>
                     <div className="space-y-0.5">
-                      <p className="text-lg font-black text-[#0a0a0a]">Day {rivalData.day}</p>
+                      <p className="text-lg font-black text-[#0a0a0a] dark:text-amber-400">Day {rivalData.day}</p>
                       <p className="text-[10px] font-bold text-[#22c55e] uppercase">{rivalData.rank}</p>
                     </div>
                   </div>
@@ -517,32 +517,32 @@ export const StatsView: React.FC<StatsViewProps> = ({
                     navigator.clipboard.writeText(shareText);
                     alert("Rivalry quote copied to clipboard:\n" + shareText);
                   }}
-                  className="w-full mt-2 py-2 border-2 border-[#2a2a2a] text-xs font-bold uppercase rounded-lg hover:bg-white cursor-pointer"
+                  className="w-full mt-2 py-2 border-2 border-[#2a2a2a] dark:border-zinc-700 text-xs font-bold uppercase rounded-lg hover:bg-white dark:hover:bg-zinc-700 text-[#0a0a0a] dark:text-amber-400 cursor-pointer"
                 >
                   Share rival score
                 </button>
               </div>
             ) : (
               <form onSubmit={handleConnectRivalry} className="space-y-2">
-                <div className="flex items-center space-x-2 p-1.5 bg-white border border-[#2a2a2a] rounded-lg">
+                <div className="flex items-center space-x-2 p-1.5 bg-white dark:bg-zinc-800 border border-[#2a2a2a] dark:border-zinc-700 rounded-lg">
                   <input
                     type="text"
                     value={friendCodeInput}
                     onChange={(e) => setFriendCodeInput(e.target.value)}
                     placeholder="ENTER FRIEND'S CODE (e.g. MARC21)"
                     maxLength={10}
-                    className="flex-grow bg-white outline-none font-bold uppercase text-xs px-2 text-[#0a0a0a]"
+                    className="flex-grow bg-white dark:bg-zinc-800 outline-none font-bold uppercase text-xs px-2 text-[#0a0a0a] dark:text-amber-400 placeholder-stone-400 dark:placeholder-zinc-500"
                   />
                   <button
                     id="connect-friend-submit"
                     type="submit"
-                    className="bg-[#22c55e] text-[#0a0a0a] text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded"
+                    className="bg-[#22c55e] text-[#0a0a0a] dark:text-amber-400 text-[10px] font-bold uppercase tracking-widest px-4 py-2 rounded"
                   >
                     Duel
                   </button>
                 </div>
-                <div className="flex justify-between items-center text-[11px] text-[#1a1a1a]/65 pt-1 px-1">
-                  <span>Your Code: <span className="font-bold text-[#0a0a0a]">{getMyRivalryCode()}</span></span>
+                <div className="flex justify-between items-center text-[11px] text-[#1a1a1a]/65 dark:text-zinc-400 pt-1 px-1">
+                  <span>Your Code: <span className="font-bold text-[#0a0a0a] dark:text-amber-400">{getMyRivalryCode()}</span></span>
                   <button
                     id="copy-my-code-btn"
                     onClick={(e) => {
@@ -563,19 +563,19 @@ export const StatsView: React.FC<StatsViewProps> = ({
 
       {/* Journal tab content */}
       {activeTab === 'journal' && (
-        <div className="bg-white border-2 border-[#2a2a2a] p-5 rounded-xl space-y-4">
-          <div className="flex items-center justify-between border-b pb-2">
-            <h3 className="text-xs font-black tracking-widest text-[#0a0a0a] uppercase my-2">your thoughts along the way</h3>
-            <span className="text-[10px] font-bold text-stone-400 bg-stone-50 border border-stone-200 px-2.5 py-0.5 rounded">
+        <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-5 rounded-xl space-y-4">
+          <div className="flex items-center justify-between border-b dark:border-zinc-700 pb-2">
+            <h3 className="text-xs font-black tracking-widest text-[#0a0a0a] dark:text-amber-400 uppercase my-2">your thoughts along the way</h3>
+            <span className="text-[10px] font-bold text-stone-400 dark:text-zinc-400 bg-stone-50 dark:bg-zinc-800 border border-stone-200 dark:border-zinc-700 px-2.5 py-0.5 rounded">
               {state.savedJournalEntries.length} Total Entries
             </span>
           </div>
 
           {/* Quick reflection form allows capturing thoughts anytime */}
-          <div className="bg-stone-50 border-2 border-dashed border-stone-300 rounded-xl p-4 space-y-3">
+          <div className="bg-stone-50 dark:bg-zinc-800/80 border-2 border-dashed border-stone-300 dark:border-zinc-700 rounded-xl p-4 space-y-3">
             <div className="flex items-center space-x-1.5">
               <span className="text-sm">✍️</span>
-              <span className="text-xs font-extrabold uppercase tracking-wide text-stone-700">Write a Journal Entry Any Time</span>
+              <span className="text-xs font-extrabold uppercase tracking-wide text-stone-700 dark:text-zinc-300">Write a Journal Entry Any Time</span>
             </div>
             
             <div className="space-y-2">
@@ -585,7 +585,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 value={customPrompt}
                 onChange={(e) => setCustomPrompt(e.target.value)}
                 maxLength={80}
-                className="w-full bg-white border-2 border-[#2a2a2a] p-2 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-emerald-400 focus:outline-none"
+                className="w-full bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-2 rounded-lg text-xs font-semibold text-[#0a0a0a] dark:text-zinc-100 placeholder-stone-400 dark:placeholder-zinc-500 focus:ring-1 focus:ring-emerald-400 focus:outline-none"
               />
               <textarea
                 placeholder="What is on your mind? Document an insight, capture a win, or outline a challenge you're looking to overcome today..."
@@ -593,10 +593,10 @@ export const StatsView: React.FC<StatsViewProps> = ({
                 onChange={(e) => setCustomReflection(e.target.value)}
                 maxLength={500}
                 rows={3}
-                className="w-full bg-white border-2 border-[#2a2a2a] p-3 rounded-lg text-xs font-medium focus:ring-1 focus:ring-emerald-400 focus:outline-none"
+                className="w-full bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-3 rounded-lg text-xs font-medium text-[#0a0a0a] dark:text-zinc-100 placeholder-stone-400 dark:placeholder-zinc-500 focus:ring-1 focus:ring-emerald-400 focus:outline-none"
               ></textarea>
               
-              <div className="flex justify-between items-center text-[10px] text-stone-400 pb-1">
+              <div className="flex justify-between items-center text-[10px] text-stone-400 dark:text-zinc-400 pb-1">
                 <span>{500 - customReflection.length} characters remaining</span>
                 <button
                   type="button"
@@ -613,7 +613,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
                       setTimeout(() => setIsSavedNote(false), 3000);
                     }
                   }}
-                  className="px-3.5 py-1.5 bg-[#22c55e] text-black border border-[#2a2a2a] font-extrabold text-xs uppercase tracking-wider rounded-md hover:bg-emerald-400 hover:active:translate-y-px disabled:opacity-50 select-none cursor-pointer"
+                  className="px-3.5 py-1.5 bg-[#22c55e] text-black dark:text-amber-400 border border-[#2a2a2a] dark:border-zinc-700 font-extrabold text-xs uppercase tracking-wider rounded-md hover:bg-emerald-400 hover:active:translate-y-px disabled:opacity-50 select-none cursor-pointer"
                 >
                   Save Entry
                 </button>
@@ -621,7 +621,7 @@ export const StatsView: React.FC<StatsViewProps> = ({
             </div>
 
             {isSavedNote && (
-              <p className="text-xs text-emerald-700 font-extrabold text-center bg-emerald-50 border border-emerald-200 py-1.5 rounded-lg animate-pulse">
+              <p className="text-xs text-emerald-700 dark:text-emerald-400 font-extrabold text-center bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 py-1.5 rounded-lg animate-pulse">
                 🎉 Entry saved successfully on {getLocalDateString()}!
               </p>
             )}
@@ -630,20 +630,20 @@ export const StatsView: React.FC<StatsViewProps> = ({
           {state.savedJournalEntries.length === 0 ? (
             <div className="text-center py-8 space-y-2">
               <span className="text-2xl">📖</span>
-              <p className="text-xs text-[#1a1a1a]/60">Your physical journal is clean. Save an entry above anytime to populate it!</p>
+              <p className="text-xs text-[#1a1a1a]/60 dark:text-zinc-400">Your physical journal is clean. Save an entry above anytime to populate it!</p>
             </div>
           ) : (
             <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1">
               {state.savedJournalEntries.slice().reverse().map((entry, idx) => (
-                <div key={idx} className="border-b border-[#eeeeee] pb-4 last:border-0 last:pb-0 space-y-2">
-                  <div className="flex justify-between items-center text-[10px] font-bold text-[#1a1a1a]/50">
+                <div key={idx} className="border-b border-[#eeeeee] dark:border-zinc-700 pb-4 last:border-0 last:pb-0 space-y-2">
+                  <div className="flex justify-between items-center text-[10px] font-bold text-[#1a1a1a]/50 dark:text-zinc-400">
                     <span>{entry.date}</span>
                     <span>{entry.timestamp}</span>
                   </div>
-                  <blockquote className="text-xs font-extrabold text-[#1a1a1a]/70 border-l border-[#22c55e] pl-2 py-0.5">
+                  <blockquote className="text-xs font-extrabold text-[#1a1a1a]/70 dark:text-zinc-300 border-l border-[#22c55e] pl-2 py-0.5">
                     "{entry.question}"
                   </blockquote>
-                  <p className="text-sm font-medium text-[#0a0a0a] whitespace-pre-wrap">
+                  <p className="text-sm font-medium text-[#0a0a0a] dark:text-zinc-200 whitespace-pre-wrap">
                     {entry.answer}
                   </p>
                 </div>

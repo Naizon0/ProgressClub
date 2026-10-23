@@ -44,7 +44,7 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 
 export interface FeedbackEntry {
   id: string;
-  category: 'bug' | 'feature' | 'general' | 'compliment';
+  category: 'bug' | 'complaint' | 'feature' | 'general' | 'compliment';
   message: string;
   email?: string;
   timestamp: string;

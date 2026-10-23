@@ -137,11 +137,11 @@ export const LegalModal: React.FC<LegalModalProps> = ({
 
               <div>
                 <h3 className="text-sm font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tight mb-1">
-                  5. Contact & Data Officer
+                  5. Contact & Privacy
                 </h3>
                 <p className="text-stone-600 dark:text-zinc-400 flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-stone-500" aria-hidden="true" />
-                  <span>Questions regarding privacy can be directed to: <strong>privacy@progressclub.app</strong></span>
+                  <span>Questions, privacy matters, and complaints can be directed to: <a href="mailto:4zdrzpxv@gmail.com" className="font-bold underline text-emerald-700 dark:text-amber-400">4zdrzpxv@gmail.com</a></span>
                 </p>
               </div>
 
@@ -196,11 +196,11 @@ export const LegalModal: React.FC<LegalModalProps> = ({
 
               <div>
                 <h3 className="text-sm font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tight mb-1">
-                  5. Contact & Support
+                  5. Contact, Support & Complaints
                 </h3>
                 <p className="text-stone-600 dark:text-zinc-400 flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-stone-500" aria-hidden="true" />
-                  <span>Support contact: <strong>support@progressclub.app</strong></span>
+                  <span>Support & complaints email: <a href="mailto:4zdrzpxv@gmail.com" className="font-bold underline text-emerald-700 dark:text-amber-400">4zdrzpxv@gmail.com</a></span>
                 </p>
               </div>
 

@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { MessageSquare, Bug, Sparkles, Heart, Send, CheckCircle2, ArrowLeft, Mail, Info } from 'lucide-react';
+import { MessageSquare, Bug, Sparkles, Heart, Send, CheckCircle2, ArrowLeft, Mail, Info, AlertCircle } from 'lucide-react';
 import { FeedbackEntry } from '../types';
+
+const COMPLAINTS_EMAIL = '4zdrzpxv@gmail.com';
 
 interface FeedbackModalProps {
   isOpen: boolean;
@@ -13,7 +15,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
   onClose,
   username,
 }) => {
-  const [category, setCategory] = useState<'bug' | 'feature' | 'general' | 'compliment'>('general');
+  const [category, setCategory] = useState<'complaint' | 'bug' | 'feature' | 'general' | 'compliment'>('complaint');
   const [message, setMessage] = useState('');
   const [email, setEmail] = useState('');
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -47,12 +49,12 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
   };
 
   const handleSendViaEmail = () => {
-    const subject = encodeURIComponent(`[Progress Club ${category.toUpperCase()}] Feedback from ${username || 'User'}`);
+    const subject = encodeURIComponent(`[Progress Club ${category.toUpperCase()}] Complaints/Feedback from ${username || 'User'}`);
     const diagInfo = includeDiagnostics
       ? `\n\n--- Diagnostics ---\nApp Version: 1.2.0 (Median Android)\nScreen: ${window.innerWidth}x${window.innerHeight}\nUser: ${username || 'Anonymous'}\nTimestamp: ${new Date().toISOString()}`
       : '';
     const body = encodeURIComponent(`${message.trim()}${diagInfo}`);
-    window.location.href = `mailto:support@progressclub.app?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:${COMPLAINTS_EMAIL}?subject=${subject}&body=${body}`;
   };
 
   const resetForm = () => {
@@ -77,11 +79,12 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-lg font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tight">
-                Feedback Received!
+              <h3 className="text-lg font-black text-[#0a0a0a] dark:text-amber-400 uppercase tracking-tight">
+                Feedback & Complaint Received
               </h3>
-              <p className="text-xs text-[#1a1a1a]/70 dark:text-zinc-400 leading-relaxed max-w-xs mx-auto">
-                Thank you{username ? ` ${username}` : ''}! Your thoughts directly shape future updates of Progress Club.
+              <p className="text-xs text-[#1a1a1a]/70 dark:text-amber-300/80 leading-relaxed max-w-xs mx-auto">
+                Thank you{username ? ` ${username}` : ''}! Your message has been logged. You can also send a direct email copy to{' '}
+                <strong className="text-emerald-600 dark:text-amber-400 font-mono">4zdrzpxv@gmail.com</strong>.
               </p>
             </div>
 
@@ -89,12 +92,12 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
               <button
                 type="button"
                 id="feedback-email-backup-btn"
-                aria-label="Also send feedback copy via email"
+                aria-label="Send complaint or feedback copy directly via email to 4zdrzpxv@gmail.com"
                 onClick={handleSendViaEmail}
-                className="py-2.5 bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-800 dark:text-zinc-200 text-xs font-black uppercase tracking-wider rounded-xl border border-stone-300 dark:border-zinc-600 flex items-center justify-center gap-2 cursor-pointer"
+                className="py-2.5 bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-800 dark:text-amber-400 text-xs font-black uppercase tracking-wider rounded-xl border border-stone-300 dark:border-zinc-600 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Mail className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>Open in Email App</span>
+                <span>Open in Email (4zdrzpxv@gmail.com)</span>
               </button>
               
               <button
@@ -116,12 +119,17 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                 <div className="p-1.5 bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 rounded-lg text-[#22c55e]">
                   <MessageSquare className="w-4 h-4" aria-hidden="true" />
                 </div>
-                <h3
-                  id="feedback-modal-title"
-                  className="text-sm font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-widest"
-                >
-                  Send Feedback
-                </h3>
+                <div>
+                  <h3
+                    id="feedback-modal-title"
+                    className="text-sm font-black text-[#0a0a0a] dark:text-amber-400 uppercase tracking-widest leading-none"
+                  >
+                    Feedback & Complaints
+                  </h3>
+                  <span className="text-[10px] text-stone-500 dark:text-amber-300/70 font-medium">
+                    Sent to: <span className="font-mono text-emerald-600 dark:text-amber-400 font-bold">4zdrzpxv@gmail.com</span>
+                  </span>
+                </div>
               </div>
 
               <button
@@ -129,7 +137,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                 id="close-feedback-btn"
                 aria-label="Cancel and close feedback"
                 onClick={onClose}
-                className="text-xs font-bold text-stone-400 hover:text-black dark:hover:text-white uppercase"
+                className="text-xs font-bold text-stone-400 hover:text-black dark:text-amber-300/70 dark:hover:text-amber-400 uppercase cursor-pointer"
               >
                 Cancel
               </button>
@@ -137,14 +145,15 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
 
             {/* Category Selectors */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-black text-stone-500 dark:text-zinc-400 uppercase tracking-wider block">
+              <label className="text-[10px] font-black text-stone-500 dark:text-amber-400 uppercase tracking-wider block">
                 Category
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                 {[
-                  { id: 'general', label: 'Feedback', icon: MessageSquare },
+                  { id: 'complaint', label: 'Complaint', icon: AlertCircle },
                   { id: 'bug', label: 'Bug Report', icon: Bug },
                   { id: 'feature', label: 'Feature', icon: Sparkles },
+                  { id: 'general', label: 'Feedback', icon: MessageSquare },
                   { id: 'compliment', label: 'Love It', icon: Heart },
                 ].map((item) => {
                   const Icon = item.icon;
@@ -156,10 +165,10 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                       id={`fb-cat-${item.id}`}
                       aria-label={`Select category ${item.label}`}
                       onClick={() => setCategory(item.id as any)}
-                      className={`py-2 px-2 rounded-xl text-[11px] font-bold flex flex-col items-center gap-1 border transition-all cursor-pointer ${
+                      className={`py-2 px-1.5 rounded-xl text-[10px] font-bold flex flex-col items-center gap-1 border transition-all cursor-pointer ${
                         isSel
                           ? 'bg-[#22c55e] border-[#2a2a2a] dark:border-zinc-700 text-black shadow-xs font-black'
-                          : 'bg-stone-50 dark:bg-zinc-800 border-stone-200 dark:border-zinc-700 text-stone-600 dark:text-zinc-300 hover:bg-stone-100 dark:hover:bg-zinc-700'
+                          : 'bg-stone-50 dark:bg-zinc-800 border-stone-200 dark:border-zinc-700 text-stone-600 dark:text-amber-300 hover:bg-stone-100 dark:hover:bg-zinc-700'
                       }`}
                     >
                       <Icon className="w-3.5 h-3.5" aria-hidden="true" />
@@ -175,29 +184,31 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
               <div className="flex justify-between items-center">
                 <label
                   htmlFor="feedback-message-input"
-                  className="text-[10px] font-black text-stone-500 dark:text-zinc-400 uppercase tracking-wider"
+                  className="text-[10px] font-black text-stone-500 dark:text-amber-400 uppercase tracking-wider"
                 >
-                  Your Message <span className="text-red-500">*</span>
+                  Your Message / Complaint <span className="text-red-500">*</span>
                 </label>
-                <span className="text-[9px] font-mono text-stone-400 dark:text-zinc-500">
+                <span className="text-[9px] font-mono text-stone-400 dark:text-amber-300/60">
                   {message.length} chars
                 </span>
               </div>
               <textarea
                 id="feedback-message-input"
-                aria-label="Feedback message"
+                aria-label="Feedback or complaint message"
                 rows={4}
                 required
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder={
-                  category === 'bug'
+                  category === 'complaint'
+                    ? "Please tell us what went wrong or what you're dissatisfied with (sent to 4zdrzpxv@gmail.com)..."
+                    : category === 'bug'
                     ? "Please describe what happened, what you expected, and any steps to reproduce..."
                     : category === 'feature'
                     ? "What new feature or workspace item would make your focus sessions even better?"
                     : "Tell us anything on your mind or how Progress Club is helping you..."
                 }
-                className="w-full bg-stone-50 dark:bg-zinc-900 border border-[#2a2a2a] dark:border-zinc-700 rounded-xl p-3 text-xs text-[#0a0a0a] dark:text-zinc-100 focus:outline-hidden focus:ring-2 focus:ring-[#22c55e] leading-relaxed resize-none"
+                className="w-full bg-stone-50 dark:bg-zinc-900 border border-[#2a2a2a] dark:border-zinc-700 rounded-xl p-3 text-xs text-[#0a0a0a] dark:text-amber-400 focus:outline-hidden focus:ring-2 focus:ring-[#22c55e] leading-relaxed resize-none"
               />
             </div>
 
@@ -205,9 +216,9 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
             <div className="space-y-1">
               <label
                 htmlFor="feedback-email-input"
-                className="text-[10px] font-black text-stone-500 dark:text-zinc-400 uppercase tracking-wider block"
+                className="text-[10px] font-black text-stone-500 dark:text-amber-400 uppercase tracking-wider block"
               >
-                Your Email <span className="text-stone-400 font-normal">(Optional, if you'd like a response)</span>
+                Your Email <span className="text-stone-400 dark:text-amber-300/60 font-normal">(Optional, if you'd like a direct reply)</span>
               </label>
               <input
                 id="feedback-email-input"
@@ -216,7 +227,7 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@domain.com"
-                className="w-full bg-stone-50 dark:bg-zinc-900 border border-[#2a2a2a] dark:border-zinc-700 rounded-xl px-3 py-2 text-xs text-[#0a0a0a] dark:text-zinc-100 focus:outline-hidden focus:ring-2 focus:ring-[#22c55e]"
+                className="w-full bg-stone-50 dark:bg-zinc-900 border border-[#2a2a2a] dark:border-zinc-700 rounded-xl px-3 py-2 text-xs text-[#0a0a0a] dark:text-amber-400 focus:outline-hidden focus:ring-2 focus:ring-[#22c55e]"
               />
             </div>
 
@@ -228,27 +239,43 @@ export const FeedbackModal: React.FC<FeedbackModalProps> = ({
                 onChange={(e) => setIncludeDiagnostics(e.target.checked)}
                 className="w-3.5 h-3.5 accent-[#22c55e] rounded"
               />
-              <span className="text-[10px] text-stone-500 dark:text-zinc-400 flex items-center gap-1">
+              <span className="text-[10px] text-stone-500 dark:text-amber-300/80 flex items-center gap-1">
                 <Info className="w-3 h-3 text-stone-400" aria-hidden="true" />
                 Include anonymous app diagnostic info (Version 1.2.0)
               </span>
             </label>
 
             {/* Submit buttons */}
-            <div className="pt-2">
+            <div className="pt-2 flex flex-col sm:flex-row gap-2">
               <button
                 type="submit"
                 id="submit-feedback-btn"
                 aria-label="Submit feedback report"
                 disabled={!message.trim()}
-                className={`w-full py-3 text-xs font-black uppercase tracking-wider rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 flex items-center justify-center gap-2 transition-all ${
+                className={`flex-1 py-3 text-xs font-black uppercase tracking-wider rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 flex items-center justify-center gap-2 transition-all ${
                   message.trim()
                     ? 'bg-[#22c55e] hover:bg-emerald-400 text-black cursor-pointer shadow-xs active:translate-y-px'
-                    : 'bg-stone-200 dark:bg-zinc-800 text-stone-400 dark:text-zinc-600 cursor-not-allowed border-stone-300 dark:border-zinc-700'
+                    : 'bg-stone-200 dark:bg-zinc-800 text-stone-400 dark:text-amber-400/40 cursor-not-allowed border-stone-300 dark:border-zinc-700'
                 }`}
               >
                 <Send className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>Submit Feedback</span>
+                <span>Submit</span>
+              </button>
+              <button
+                type="button"
+                id="email-feedback-direct-btn"
+                aria-label="Send complaints directly to 4zdrzpxv@gmail.com via email"
+                disabled={!message.trim()}
+                onClick={handleSendViaEmail}
+                className={`py-3 px-3 text-xs font-black uppercase tracking-wider rounded-xl border border-stone-300 dark:border-zinc-600 flex items-center justify-center gap-1.5 transition-all ${
+                  message.trim()
+                    ? 'bg-stone-100 dark:bg-zinc-800 hover:bg-stone-200 dark:hover:bg-zinc-700 text-stone-800 dark:text-amber-400 cursor-pointer'
+                    : 'bg-stone-100 dark:bg-zinc-850 text-stone-400 dark:text-amber-400/30 cursor-not-allowed'
+                }`}
+                title="Send directly to 4zdrzpxv@gmail.com"
+              >
+                <Mail className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Send to 4zdrzpxv@gmail.com</span>
               </button>
             </div>
           </form>

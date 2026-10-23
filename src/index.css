@@ -60,6 +60,27 @@ html.dark {
   --bg-glow: radial-gradient(circle at 50% -40px, rgba(34, 197, 94, 0.13) 0%, transparent 600px);
 }
 
+/* Change all black text in dark mode to deep yellow text */
+html.dark .text-black:not([class*="dark:text-zinc-"]):not([class*="dark:text-white"]):not([class*="dark:text-emerald-"]):not([class*="dark:text-stone-"]):not([class*="dark:text-gray-"]):not([class*="dark:text-slate-"]):not([class*="dark:text-amber-"]):not([class*="dark:text-yellow-"]):not([class*="dark:text-green-"]):not([class*="dark:text-red-"]):not([class*="dark:text-rose-"]),
+html.dark .text-\[\#0a0a0a\]:not([class*="dark:text-zinc-"]):not([class*="dark:text-white"]):not([class*="dark:text-emerald-"]):not([class*="dark:text-stone-"]):not([class*="dark:text-gray-"]):not([class*="dark:text-slate-"]):not([class*="dark:text-amber-"]):not([class*="dark:text-yellow-"]):not([class*="dark:text-green-"]):not([class*="dark:text-red-"]):not([class*="dark:text-rose-"]),
+html.dark .text-\[\#0A0A0A\]:not([class*="dark:text-zinc-"]):not([class*="dark:text-white"]):not([class*="dark:text-emerald-"]):not([class*="dark:text-stone-"]):not([class*="dark:text-gray-"]):not([class*="dark:text-slate-"]):not([class*="dark:text-amber-"]):not([class*="dark:text-yellow-"]):not([class*="dark:text-green-"]):not([class*="dark:text-red-"]):not([class*="dark:text-rose-"]),
+html.dark .text-\[\#1a1a1a\]:not([class*="dark:text-zinc-"]):not([class*="dark:text-white"]):not([class*="dark:text-emerald-"]):not([class*="dark:text-stone-"]):not([class*="dark:text-gray-"]):not([class*="dark:text-slate-"]):not([class*="dark:text-amber-"]):not([class*="dark:text-yellow-"]):not([class*="dark:text-green-"]):not([class*="dark:text-red-"]):not([class*="dark:text-rose-"]),
+html.dark .text-\[\#1A1A1A\]:not([class*="dark:text-zinc-"]):not([class*="dark:text-white"]):not([class*="dark:text-emerald-"]):not([class*="dark:text-stone-"]):not([class*="dark:text-gray-"]):not([class*="dark:text-slate-"]):not([class*="dark:text-amber-"]):not([class*="dark:text-yellow-"]):not([class*="dark:text-green-"]):not([class*="dark:text-red-"]):not([class*="dark:text-rose-"]),
+html.dark .text-stone-900:not([class*="dark:text-zinc-"]):not([class*="dark:text-white"]):not([class*="dark:text-emerald-"]):not([class*="dark:text-stone-"]):not([class*="dark:text-gray-"]):not([class*="dark:text-slate-"]):not([class*="dark:text-amber-"]):not([class*="dark:text-yellow-"]),
+html.dark .text-stone-950:not([class*="dark:text-zinc-"]):not([class*="dark:text-white"]):not([class*="dark:text-emerald-"]):not([class*="dark:text-stone-"]):not([class*="dark:text-gray-"]):not([class*="dark:text-slate-"]):not([class*="dark:text-amber-"]):not([class*="dark:text-yellow-"]),
+html.dark .text-zinc-950:not([class*="dark:text-zinc-"]):not([class*="dark:text-white"]):not([class*="dark:text-emerald-"]):not([class*="dark:text-stone-"]):not([class*="dark:text-gray-"]):not([class*="dark:text-slate-"]):not([class*="dark:text-amber-"]):not([class*="dark:text-yellow-"]),
+html.dark .text-zinc-900:not([class*="dark:text-zinc-"]):not([class*="dark:text-white"]):not([class*="dark:text-emerald-"]):not([class*="dark:text-stone-"]):not([class*="dark:text-gray-"]):not([class*="dark:text-slate-"]):not([class*="dark:text-amber-"]):not([class*="dark:text-yellow-"]),
+html.dark .dark\:text-black,
+html.dark .dark\:text-\[\#0a0a0a\],
+html.dark .dark\:text-\[\#0A0A0A\],
+html.dark .dark\:text-\[\#1a1a1a\],
+html.dark .dark\:text-\[\#1A1A1A\],
+html.dark [class*="dark:text-black"],
+html.dark [class*="dark:text-[#0a0a0a]"],
+html.dark [class*="dark:text-[#0A0A0A]"] {
+  color: #fbbf24 !important; /* Deep yellow / amber-400 */
+}
+
 body {
   font-family: var(--font-sans);
   background-color: var(--app-bg);

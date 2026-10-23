@@ -261,32 +261,32 @@ export const ShopView: React.FC<ShopViewProps> = ({
       </div>
 
       {/* Rewards info banner */}
-      <div className="bg-white border-2 border-[#2a2a2a] rounded-2xl p-4.5 space-y-2 shadow-[4px_4px_0px_0px_rgba(10,10,10,1)]">
+      <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-2xl p-4.5 space-y-2 shadow-[4px_4px_0px_0px_rgba(10,10,10,1)] dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
         <div className="flex items-center space-x-2">
           <Sparkles className="h-4 w-4 text-[#22c55e]" />
-          <h2 className="text-xs font-black tracking-widest text-[#0a0a0a] uppercase">100% EARNED REWARDS</h2>
+          <h2 className="text-xs font-black tracking-widest text-[#0a0a0a] dark:text-amber-400 uppercase">100% EARNED REWARDS</h2>
         </div>
-        <p className="text-xs text-[#1a1a1a]/80 leading-relaxed font-medium">
+        <p className="text-xs text-[#1a1a1a]/80 dark:text-zinc-300 leading-relaxed font-medium">
           Every workspace, desk toy companion, and cozy room decor in Progress Club is <strong>100% free</strong> and unlocked exclusively with <strong>Bix earned from your focus sessions</strong>.
         </p>
       </div>
 
       {/* SECTION 1: WORKSPACE ROOMS */}
       <div className="space-y-4">
-        <div className="flex items-center space-x-2 border-b-2 border-stone-200 pb-2">
-          <Compass className="h-5 w-5 text-stone-800 text-left shrink-0" />
-          <h2 className="text-xs font-black tracking-widest text-[#0a0a0a] uppercase">UPGRADE YOUR WORKSPACE SPHERE</h2>
+        <div className="flex items-center space-x-2 border-b-2 border-stone-200 dark:border-zinc-700 pb-2">
+          <Compass className="h-5 w-5 text-stone-800 dark:text-amber-400 text-left shrink-0" />
+          <h2 className="text-xs font-black tracking-widest text-[#0a0a0a] dark:text-amber-400 uppercase">UPGRADE YOUR WORKSPACE SPHERE</h2>
         </div>
 
         {/* Room Bundle Banner */}
         {unownedRooms.length > 0 && (
-          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 border-2 border-[#2a2a2a] rounded-xl overflow-hidden flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(10,10,10,1)]">
-            <div className="bg-[#22c55e] p-3 text-center border-b-2 border-[#2a2a2a] relative">
-              <span className="absolute top-1 left-2 bg-black uppercase text-white font-serif italic text-[8px] font-black tracking-widest px-1.5 rounded">BUNDLE SAVINGS</span>
-              <h3 className="text-xs font-black text-[#0a0a0a] uppercase tracking-widest">WORLD ATLAS ROOM BUNDLE</h3>
-              <p className="text-[10px] font-bold text-[#0a0a0a]/80">Unlocks all 7 remaining workspace environments at once</p>
+          <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-zinc-900 dark:to-zinc-800 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-xl overflow-hidden flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(10,10,10,1)] dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <div className="bg-[#22c55e] p-3 text-center border-b-2 border-[#2a2a2a] dark:border-zinc-700 relative">
+              <span className="absolute top-1 left-2 bg-black uppercase text-amber-300 font-serif italic text-[8px] font-black tracking-widest px-1.5 rounded">BUNDLE SAVINGS</span>
+              <h3 className="text-xs font-black text-[#0a0a0a] dark:text-amber-400 uppercase tracking-widest">WORLD ATLAS ROOM BUNDLE</h3>
+              <p className="text-[10px] font-bold text-[#0a0a0a]/80 dark:text-amber-300/90">Unlocks all 7 remaining workspace environments at once</p>
             </div>
-            <div className="p-3 bg-white flex justify-center">
+            <div className="p-3 bg-white dark:bg-zinc-900 flex justify-center">
               <button
                 id="room-bundle-bix"
                 onClick={onBuyBundleRooms}
@@ -423,11 +423,11 @@ export const ShopView: React.FC<ShopViewProps> = ({
 
       {/* SECTION 2: ROOM DECOR & UPGRADES */}
       <div className="space-y-4">
-        <div className="flex items-center space-x-2 border-b-2 border-stone-200 pb-2">
-          <Sprout className="h-5 w-5 text-stone-800 text-left shrink-0" />
-          <h2 className="text-xs font-black tracking-widest text-[#0a0a0a] uppercase">DECORATE YOUR CABINET COZY</h2>
+        <div className="flex items-center space-x-2 border-b-2 border-stone-200 dark:border-zinc-700 pb-2">
+          <Sprout className="h-5 w-5 text-stone-800 dark:text-amber-400 text-left shrink-0" />
+          <h2 className="text-xs font-black tracking-widest text-[#0a0a0a] dark:text-amber-400 uppercase">DECORATE YOUR CABINET COZY</h2>
         </div>
-        <p className="text-xs text-[#1a1a1a]/70 font-medium leading-relaxed">
+        <p className="text-xs text-[#1a1a1a]/70 dark:text-zinc-300 font-medium leading-relaxed">
           Unlock decorative artifacts to personalize your dynamic cabin slots! <strong>Equipped items</strong> automatically render live in your focus room.
         </p>
 
@@ -444,27 +444,27 @@ export const ShopView: React.FC<ShopViewProps> = ({
             return (
               <div
                 key={item.id}
-                className="bg-white border-2 border-[#2a2a2a] p-4.5 rounded-2xl flex items-center justify-between shadow-[3px_3px_0px_0px_rgba(10,10,10,1)] hover:translate-x-px hover:translate-y-px hover:shadow-[4px_4px_0px_0px_rgba(10,10,10,1)] transition-all"
+                className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-4.5 rounded-2xl flex items-center justify-between shadow-[3px_3px_0px_0px_rgba(10,10,10,1)] dark:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:translate-x-px hover:translate-y-px transition-all"
               >
                 <div className="flex items-center space-x-3.5 w-2/3">
-                  <div className="text-3xl bg-stone-50 border-2 border-stone-300 w-13 h-13 rounded-xl flex items-center justify-center shadow-inner hover:-rotate-6 transition-transform select-none shrink-0">
+                  <div className="text-3xl bg-stone-50 dark:bg-zinc-800 border-2 border-stone-300 dark:border-zinc-700 w-13 h-13 rounded-xl flex items-center justify-center shadow-inner hover:-rotate-6 transition-transform select-none shrink-0">
                     {item.icon}
                   </div>
                   <div className="space-y-0.5">
                     <div className="flex items-center space-x-1.5 flex-wrap">
-                      <h4 className="text-xs font-black text-[#0a0a0a] uppercase">{item.name}</h4>
+                      <h4 className="text-xs font-black text-[#0a0a0a] dark:text-amber-400 uppercase">{item.name}</h4>
                       <span className={`text-[7px] font-black border px-1.5 py-0.2 rounded uppercase ${extra.rarityBadgeClass}`}>
                         {extra.rarity}
                       </span>
                     </div>
-                    <p className="text-[11px] text-[#1a1a1a]/85 leading-snug font-medium pb-0.5">{item.copy}</p>
+                    <p className="text-[11px] text-[#1a1a1a]/85 dark:text-zinc-300 leading-snug font-medium pb-0.5">{item.copy}</p>
 
-                    <p className="text-[10px] text-stone-500 font-medium leading-snug italic">
-                      <strong className="text-amber-500">Aura Spark:</strong> {extra.effect}
+                    <p className="text-[10px] text-stone-500 dark:text-zinc-400 font-medium leading-snug italic">
+                      <strong className="text-amber-500 dark:text-amber-400">Aura Spark:</strong> {extra.effect}
                     </p>
 
                     {!owned && (
-                      <div className="text-[10px] font-extrabold text-stone-600 pt-1">
+                      <div className="text-[10px] font-extrabold text-stone-600 dark:text-zinc-400 pt-1">
                         Price: <span className="text-[#22c55e] font-black">🪙 {item.priceBix} Bix</span>
                       </div>
                     )}
@@ -478,8 +478,8 @@ export const ShopView: React.FC<ShopViewProps> = ({
                       onClick={() => onToggleRoomItem(item.id)}
                       className={`w-full py-2.5 text-xs font-black uppercase rounded-lg border-2 transition-all cursor-pointer ${
                         equipped
-                          ? 'bg-[#22c55e] text-stone-900 border-stone-900 shadow-[2px_2px_0px_0px_rgba(10,10,10,1)]'
-                          : 'bg-white text-stone-400 hover:text-stone-900 border-stone-200 hover:border-stone-400'
+                          ? 'bg-[#22c55e] text-stone-900 dark:text-amber-400 border-stone-900 dark:border-zinc-700 shadow-[2px_2px_0px_0px_rgba(10,10,10,1)]'
+                          : 'bg-white dark:bg-zinc-800 text-stone-400 dark:text-zinc-400 hover:text-stone-900 dark:hover:text-amber-400 border-stone-200 dark:border-zinc-700'
                       }`}
                     >
                       {equipped ? '✓ Equipped' : 'Unequipped'}
@@ -489,7 +489,7 @@ export const ShopView: React.FC<ShopViewProps> = ({
                       id={`rect-buy-item-bix-${item.id}`}
                       onClick={() => onPurchaseRoomItemBix(item.id, item.priceBix)}
                       disabled={state.bixBalance < item.priceBix}
-                      className={`py-2 px-3 bg-[#22c55e] text-stone-900 text-[10px] uppercase font-black border-2 border-stone-900 rounded-lg ${
+                      className={`py-2 px-3 bg-[#22c55e] text-stone-900 dark:text-amber-400 text-[10px] uppercase font-black border-2 border-stone-900 dark:border-zinc-700 rounded-lg ${
                         state.bixBalance < item.priceBix
                           ? 'opacity-35 cursor-not-allowed'
                           : 'hover:bg-emerald-400 hover:shadow-[1px_1px_0px_0px_rgba(10,10,10,1)] transition-all cursor-pointer'
@@ -507,23 +507,23 @@ export const ShopView: React.FC<ShopViewProps> = ({
 
       {/* SECTION 3: YOUR CREW */}
       <div className="space-y-4">
-        <div className="flex items-center space-x-2 border-b-2 border-stone-200 pb-2">
-          <Gamepad className="h-5 w-5 text-stone-800 text-left shrink-0" />
-          <h2 className="text-xs font-black tracking-widest text-[#0a0a0a] uppercase">COLLECT YOUR DESK CREW</h2>
+        <div className="flex items-center space-x-2 border-b-2 border-stone-200 dark:border-zinc-700 pb-2">
+          <Gamepad className="h-5 w-5 text-stone-800 dark:text-amber-400 text-left shrink-0" />
+          <h2 className="text-xs font-black tracking-widest text-[#0a0a0a] dark:text-amber-400 uppercase">COLLECT YOUR DESK CREW</h2>
         </div>
-        <p className="text-xs text-[#1a1a1a]/70 font-medium leading-relaxed">
+        <p className="text-xs text-[#1a1a1a]/70 dark:text-zinc-300 font-medium leading-relaxed">
           Each companion features an <strong>interactive stat grid</strong> and specialized <strong>concentration aura.</strong> Collect all 8 to complete your master desktop roster!
         </p>
 
         {/* Bundle Banner */}
         {unownedCharacters.length > 0 && (
-          <div className="bg-gradient-to-br from-[#fff7ed] to-orange-100/30 border-2 border-[#2a2a2a] rounded-xl overflow-hidden flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(10,10,10,1)]">
-            <div className="bg-[#22c55e] p-3 text-center border-b-2 border-[#2a2a2a] relative">
-              <span className="absolute top-1 left-2 bg-black uppercase text-white font-serif italic text-[8px] font-black tracking-widest px-1.5 rounded">ROSTER BUNDLE</span>
-              <h3 className="text-xs font-black text-[#0a0a0a] uppercase tracking-widest">COMPLETE ROSTER BUNDLE</h3>
-              <p className="text-[10px] font-semibold text-[#0a0a0a]/85">Unlocks Blaze, Frost, Dusk, Ember, Mantis, Volt, and Monument together!</p>
+          <div className="bg-gradient-to-br from-[#fff7ed] to-orange-100/30 dark:from-zinc-900 dark:to-zinc-800 border-2 border-[#2a2a2a] dark:border-zinc-700 rounded-xl overflow-hidden flex flex-col justify-between shadow-[4px_4px_0px_0px_rgba(10,10,10,1)] dark:shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]">
+            <div className="bg-[#22c55e] p-3 text-center border-b-2 border-[#2a2a2a] dark:border-zinc-700 relative">
+              <span className="absolute top-1 left-2 bg-black uppercase text-amber-300 font-serif italic text-[8px] font-black tracking-widest px-1.5 rounded">ROSTER BUNDLE</span>
+              <h3 className="text-xs font-black text-[#0a0a0a] dark:text-amber-400 uppercase tracking-widest">COMPLETE ROSTER BUNDLE</h3>
+              <p className="text-[10px] font-semibold text-[#0a0a0a]/85 dark:text-amber-300/90">Unlocks Blaze, Frost, Dusk, Ember, Mantis, Volt, and Monument together!</p>
             </div>
-            <div className="p-3 bg-white flex justify-center">
+            <div className="p-3 bg-white dark:bg-zinc-900 flex justify-center">
               <button
                 id="crew-bundle-bix"
                 onClick={onBuyBundleCharacters}

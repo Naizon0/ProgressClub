@@ -1965,8 +1965,8 @@ export default function App() {
 
         {activeTab === 'office' && (
           <div className="space-y-6 select-none">
-            <h1 className="text-lg font-black text-[#0a0a0a] uppercase tracking-wider">YOUR CLUB WORKSPACE</h1>
-            <p className="text-xs text-[#1a1a1a]/60">view equipped upgrades and decorations interactively inside your active cabin.</p>
+            <h1 className="text-lg font-black text-[#0a0a0a] dark:text-amber-400 uppercase tracking-wider">YOUR CLUB WORKSPACE</h1>
+            <p className="text-xs text-[#1a1a1a]/60 dark:text-zinc-400">view equipped upgrades and decorations interactively inside your active cabin.</p>
 
             <OfficeRoom
               roomId={state.currentRoom}
@@ -1984,10 +1984,10 @@ export default function App() {
             />
 
             {/* WORKSPACE THEME SELECTION */}
-            <div className="bg-white border-2 border-[#2a2a2a] p-4 rounded-xl space-y-4">
-              <div className="border-b border-stone-200 pb-2">
-                <h3 className="text-xs font-black uppercase tracking-wider">YOUR CABIN THEMES</h3>
-                <p className="text-[10px] text-stone-500">Pick any unlocked architectural focus cabin to serve as your backdrop room.</p>
+            <div className="bg-white dark:bg-zinc-900 border-2 border-[#2a2a2a] dark:border-zinc-700 p-4 rounded-xl space-y-4">
+              <div className="border-b border-stone-200 dark:border-zinc-700 pb-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-[#0a0a0a] dark:text-amber-400">YOUR CABIN THEMES</h3>
+                <p className="text-[10px] text-stone-500 dark:text-zinc-400">Pick any unlocked architectural focus cabin to serve as your backdrop room.</p>
               </div>
               
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -2005,8 +2005,8 @@ export default function App() {
                         active
                           ? 'border-[#22c55e] bg-[#22c55e]/5 text-[#22c55e]'
                           : owned
-                          ? 'border-[#2a2a2a] bg-white text-[#0a0a0a] hover:bg-stone-50'
-                          : 'border-[#eeeeee] bg-[#fafafa] text-stone-400 cursor-not-allowed'
+                          ? 'border-[#2a2a2a] dark:border-zinc-700 bg-white dark:bg-zinc-800 text-[#0a0a0a] dark:text-amber-400 hover:bg-stone-50 dark:hover:bg-zinc-700'
+                          : 'border-[#eeeeee] dark:border-zinc-800 bg-[#fafafa] dark:bg-zinc-900/60 text-stone-400 dark:text-zinc-500 cursor-not-allowed'
                       }`}
                     >
                       {active && <span className="absolute top-1 right-1 text-[8px] bg-[#22c55e] text-white px-1">ACTIVE</span>}
@@ -2475,11 +2475,11 @@ export default function App() {
                     <MessageSquare className="w-4 h-4" aria-hidden="true" />
                   </div>
                   <div>
-                    <h4 className="text-xs font-black uppercase text-[#0a0a0a] dark:text-zinc-100">
-                      Send Feedback & Bug Reports
+                    <h4 className="text-xs font-black uppercase text-[#0a0a0a] dark:text-amber-400">
+                      Send Feedback & Complaints
                     </h4>
-                    <p className="text-[10px] text-stone-500 dark:text-zinc-400">
-                      Share ideas or report issues directly to the team
+                    <p className="text-[10px] text-stone-500 dark:text-amber-300/70">
+                      Share feedback, report issues, or email complaints to 4zdrzpxv@gmail.com
                     </p>
                   </div>
                 </div>
