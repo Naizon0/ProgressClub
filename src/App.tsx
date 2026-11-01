@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AppState, ChallengeLength, JournalEntry, ThemeMode, TodaysOneThing, BixLossRecord } from './types';
+import { AppState, ChallengeLength, JournalEntry, ThemeMode, TodaysOneThing, BixLossRecord, ScheduledTimer } from './types';
 import { INITIAL_STATE, CHARACTERS, ROOMS, RANKS, JOURNAL_QUESTIONS, ROOM_ITEMS } from './data';
 import CrewCharacter from './components/CrewCharacter';
 import OfficeRoom from './components/OfficeRoom';
@@ -13,6 +13,9 @@ import WalkthroughModal from './components/WalkthroughModal';
 import FeedbackModal from './components/FeedbackModal';
 import BixLossModal from './components/BixLossModal';
 import ProgressVisualizer from './components/ProgressVisualizer';
+import ScheduleTimerModal from './components/ScheduleTimerModal';
+import ScheduledSessionReadyModal from './components/ScheduledSessionReadyModal';
+import ScheduledTimerBanner from './components/ScheduledTimerBanner';
 import {
   Sun,
   Moon,
@@ -43,6 +46,11 @@ import {
   AlertCircle,
   Pin,
   Trash2,
+  Calendar,
+  CalendarClock,
+  AlarmClock,
+  Edit2,
+  X,
 } from 'lucide-react';
 import {
   isNotificationSupported,
@@ -51,6 +59,8 @@ import {
   isAppNotOpen,
   sendSessionDoneNotification,
   playCompletionChime,
+  playScheduledAlertChime,
+  sendScheduledTimerNotification,
 } from './utils/notifications';
 
 // Helper: Get local Date string as YYYY-MM-DD
@@ -147,6 +157,11 @@ export default function App() {
   const [showWalkthroughModal, setShowWalkthroughModal] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
 
+  // Scheduled Timer States:
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showScheduledReadyModal, setShowScheduledReadyModal] = useState(false);
+  const [scheduledNotificationToast, setScheduledNotificationToast] = useState<{ title: string; body: string } | null>(null);
+
   // Tracking temporary states
   const [currentJournalQuestion, setCurrentJournalQuestion] = useState('');
   const [journalText, setJournalText] = useState('');
@@ -183,6 +198,7 @@ export default function App() {
   const targetEndTimeRef = useRef<number | null>(null);
   const timerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTriggeredNotificationDateRef = useRef<string>('');
+  const scheduledAlertTriggeredRef = useRef<string>('');
 
   // Sync state to localStorage on every update
   const saveState = (newState: AppState) => {
@@ -341,6 +357,7 @@ export default function App() {
         if (!parsed.settings) parsed.settings = INITIAL_STATE.settings;
         if (!parsed.settings.theme) parsed.settings.theme = 'system';
         if (!parsed.bixLossHistory) parsed.bixLossHistory = [];
+        if (parsed.scheduledTimer === undefined) parsed.scheduledTimer = null;
         
         // Restore Executive membership status if user has a membership plan
         if (parsed.subscriptionPlan && parsed.subscriptionPlan !== 'none') {
@@ -431,6 +448,14 @@ export default function App() {
         setShowChallengeSwitchDialog(false);
         return;
       }
+      if (showScheduleModal) {
+        setShowScheduleModal(false);
+        return;
+      }
+      if (showScheduledReadyModal) {
+        setShowScheduledReadyModal(false);
+        return;
+      }
 
       // Layer 4: If on sub-tabs (stats, office, shop, settings), return to home tab
       if (activeTab !== 'home') {
@@ -452,6 +477,8 @@ export default function App() {
     showRatingModal,
     showWalkthroughModal,
     showChallengeSwitchDialog,
+    showScheduleModal,
+    showScheduledReadyModal,
     activeTab,
   ]);
 
@@ -606,8 +633,18 @@ export default function App() {
   };
 
   // Timer Tick implementation with background timestamp resilience
-  const startTimer = () => {
+  const startTimer = (customDuration?: number, customActivity?: 'desk-work' | 'exercise') => {
     if (timerIsActive) return;
+
+    const durationMin = customDuration || timerDuration;
+    const activityMode = customActivity || focusActivity;
+
+    if (customDuration) {
+      setTimerDuration(customDuration);
+    }
+    if (customActivity) {
+      setFocusActivity(customActivity);
+    }
 
     // Prompt for notification permission on user click gesture if still default
     if (isNotificationSupported() && Notification.permission === 'default') {
@@ -623,9 +660,10 @@ export default function App() {
     }
 
     setTimerIsActive(true);
-    setTimerPose(focusActivity === 'exercise' ? 'exercising' : 'typing');
+    setTimerPose(activityMode === 'exercise' ? 'exercising' : 'typing');
 
-    const totalSeconds = timerDuration * 60;
+    const totalSeconds = durationMin * 60;
+    setTimeLeft(totalSeconds);
     const targetEnd = Date.now() + totalSeconds * 1000;
     targetEndTimeRef.current = targetEnd;
 
@@ -662,7 +700,7 @@ export default function App() {
 
       // Randomly alternate between stances for visual variety !
       if (remaining % 12 === 0) {
-        if (focusActivity === 'exercise') {
+        if (activityMode === 'exercise') {
           setTimerPose('exercising'); // don't let them meditate, keep them exercising
         } else {
           setTimerPose((current) => (current === 'typing' ? 'focused' : 'typing'));
@@ -681,6 +719,134 @@ export default function App() {
     setTimeLeft(timerDuration * 60);
     document.title = 'Progress Club';
   };
+
+  // Scheduled Timer Handlers
+  const handleScheduleTimer = (scheduled: ScheduledTimer) => {
+    saveState({
+      ...state,
+      scheduledTimer: scheduled,
+    });
+    scheduledAlertTriggeredRef.current = '';
+
+    const targetDate = new Date(scheduled.targetTime);
+    const timeDisplay = targetDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+
+    setScheduledNotificationToast({
+      title: '⏰ Focus Session Scheduled!',
+      body: `Scheduled for ${timeDisplay} (${scheduled.durationMinutes}m). We'll alert you right on time!`,
+    });
+    setTimeout(() => setScheduledNotificationToast(null), 6000);
+  };
+
+  const handleCancelScheduledTimer = () => {
+    saveState({
+      ...state,
+      scheduledTimer: null,
+    });
+    setShowScheduledReadyModal(false);
+  };
+
+  const handleStartScheduledNow = () => {
+    const sched = state.scheduledTimer;
+    if (!sched) return;
+    saveState({
+      ...state,
+      scheduledTimer: null,
+    });
+    setShowScheduledReadyModal(false);
+    startTimer(sched.durationMinutes, sched.focusActivity);
+  };
+
+  const handleSnoozeScheduled = (snoozeMinutes: number = 5) => {
+    const sched = state.scheduledTimer;
+    if (!sched) return;
+    const newTarget = new Date(Date.now() + snoozeMinutes * 60 * 1000).toISOString();
+    saveState({
+      ...state,
+      scheduledTimer: {
+        ...sched,
+        targetTime: newTarget,
+      },
+    });
+    scheduledAlertTriggeredRef.current = '';
+    setShowScheduledReadyModal(false);
+
+    setScheduledNotificationToast({
+      title: '⏰ Timer Snoozed',
+      body: `Focus session snoozed for ${snoozeMinutes} minutes.`,
+    });
+    setTimeout(() => setScheduledNotificationToast(null), 4000);
+  };
+
+  // Scheduled Timer Watcher & Auto-Start Controller
+  useEffect(() => {
+    const scheduled = state.scheduledTimer;
+    if (!scheduled) {
+      scheduledAlertTriggeredRef.current = '';
+      return;
+    }
+
+    const checkScheduleArrival = () => {
+      const currentSched = state.scheduledTimer;
+      if (!currentSched) return;
+
+      const targetMs = new Date(currentSched.targetTime).getTime();
+      const nowMs = Date.now();
+
+      // Check if scheduled time has arrived (within the past 2 hours)
+      if (nowMs >= targetMs && nowMs - targetMs < 2 * 60 * 60 * 1000) {
+        if (scheduledAlertTriggeredRef.current === currentSched.id) {
+          return;
+        }
+        scheduledAlertTriggeredRef.current = currentSched.id;
+
+        // If user already has an active session going, just clear schedule
+        if (timerIsActive) {
+          saveState({
+            ...state,
+            scheduledTimer: null,
+          });
+          return;
+        }
+
+        // Fire browser notification & alert chime
+        sendScheduledTimerNotification({
+          username: state.username,
+          durationMinutes: currentSched.durationMinutes,
+          label: currentSched.label,
+          autoStarted: currentSched.autoStart,
+        });
+
+        if (currentSched.autoStart) {
+          saveState({
+            ...state,
+            scheduledTimer: null,
+          });
+
+          startTimer(currentSched.durationMinutes, currentSched.focusActivity);
+
+          setScheduledNotificationToast({
+            title: '⏰ Scheduled Session Started!',
+            body: `${currentSched.durationMinutes}m focus session${currentSched.label ? ` ("${currentSched.label}")` : ''} has begun. Let's do this!`,
+          });
+          setTimeout(() => setScheduledNotificationToast(null), 7000);
+        } else {
+          setShowScheduledReadyModal(true);
+        }
+      } else if (nowMs - targetMs >= 2 * 60 * 60 * 1000) {
+        // Discard stale schedule
+        saveState({
+          ...state,
+          scheduledTimer: null,
+        });
+      }
+    };
+
+    const interval = setInterval(checkScheduleArrival, 1000);
+    checkScheduleArrival();
+
+    return () => clearInterval(interval);
+  }, [state.scheduledTimer, state.username, timerIsActive]);
 
   // Sync timer countdown when tab visibility changes or window receives focus
   useEffect(() => {
@@ -1341,25 +1507,47 @@ export default function App() {
               </button>
             </div>
 
+            {/* ACTIVE SCHEDULED TIMER BANNER */}
+            {state.scheduledTimer && !timerIsActive && (
+              <ScheduledTimerBanner
+                scheduledTimer={state.scheduledTimer}
+                onStartNow={handleStartScheduledNow}
+                onEdit={() => setShowScheduleModal(true)}
+                onCancel={handleCancelScheduledTimer}
+              />
+            )}
+
             {/* 1-TAP FRICTIONLESS QUICK START BAR */}
             {!timerIsActive && (
-              <div className="bg-stone-900 dark:bg-zinc-800 text-white p-3 rounded-2xl border-2 border-[#2a2a2a] dark:border-zinc-700 flex items-center justify-between shadow-xs">
+              <div className="bg-stone-900 dark:bg-zinc-800 text-white p-3 rounded-2xl border-2 border-[#2a2a2a] dark:border-amber-400/30 flex items-center justify-between shadow-xs">
                 <div className="flex items-center space-x-2.5">
                   <div className="w-7 h-7 rounded-full bg-[#22c55e] text-black flex items-center justify-center font-black text-xs">
                     ⚡
                   </div>
                   <div className="text-left">
-                    <p className="text-xs font-black uppercase tracking-wider">1-Tap Focus Launch</p>
-                    <p className="text-[10px] text-stone-400 dark:text-zinc-400 font-medium">Default {state.settings?.durationDefault || 25}m session ready</p>
+                    <p className="text-xs font-black uppercase tracking-wider text-white dark:text-amber-400">1-Tap Focus Launch</p>
+                    <p className="text-[10px] text-stone-400 dark:text-amber-300/70 font-medium">Default {state.settings?.durationDefault || 25}m session ready</p>
                   </div>
                 </div>
-                <button
-                  id="frictionless-quickstart-btn"
-                  onClick={startTimer}
-                  className="bg-[#22c55e] text-black hover:bg-emerald-400 font-black text-xs uppercase tracking-wider px-3.5 py-2 rounded-xl shadow-[0_2px_0_#0a0a0a] active:translate-y-0.5 transition-all cursor-pointer"
-                >
-                  ▶ Start
-                </button>
+                <div className="flex items-center space-x-1.5">
+                  <button
+                    type="button"
+                    id="quick-schedule-trigger-btn"
+                    onClick={() => setShowScheduleModal(true)}
+                    title="Schedule a focus timer to start at a specified time"
+                    className="bg-stone-800 hover:bg-stone-700 dark:bg-zinc-700 dark:hover:bg-zinc-650 text-white dark:text-amber-400 font-bold text-xs uppercase px-2.5 py-2 rounded-xl border border-stone-700 dark:border-amber-400/30 flex items-center gap-1 cursor-pointer transition shadow-xs active:translate-y-0.5"
+                  >
+                    <AlarmClock className="w-3.5 h-3.5 text-[#22c55e] dark:text-amber-400" />
+                    <span className="hidden sm:inline">Schedule</span>
+                  </button>
+                  <button
+                    id="frictionless-quickstart-btn"
+                    onClick={() => startTimer()}
+                    className="bg-[#22c55e] text-black hover:bg-emerald-400 font-black text-xs uppercase tracking-wider px-3.5 py-2 rounded-xl shadow-[0_2px_0_#0a0a0a] active:translate-y-0.5 transition-all cursor-pointer"
+                  >
+                    ▶ Start
+                  </button>
+                </div>
               </div>
             )}
 
@@ -1676,25 +1864,38 @@ export default function App() {
               )}
 
               {/* PRIMARY ACTION ACTIONS */}
-              <div className="pt-2 select-none">
+              <div className="pt-2 select-none space-y-2.5">
                 {timerIsActive ? (
                   <button
                     id="abort-timer-btn"
                     aria-label="Abort active focus session"
                     onClick={stopTimer}
-                    className="w-full py-4 bg-white dark:bg-zinc-800 text-black dark:text-zinc-100 text-sm font-black uppercase tracking-widest rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 active:scale-95 transition-all cursor-pointer"
+                    className="w-full py-4 bg-white dark:bg-zinc-800 text-black dark:text-amber-400 text-sm font-black uppercase tracking-widest rounded-xl border-2 border-[#2a2a2a] dark:border-amber-400/40 active:scale-95 transition-all cursor-pointer"
                   >
                     Abort Session
                   </button>
                 ) : (
-                  <button
-                    id="start-timer-btn"
-                    aria-label="Start focus session timer"
-                    onClick={startTimer}
-                    className="w-full py-4 bg-[#22c55e] text-[#0a0a0a] text-sm font-black uppercase tracking-widest rounded-xl border-2 border-[#2a2a2a] dark:border-zinc-700 shadow-[0_4px_0_#0a0a0a] active:translate-y-1 active:shadow-none transition-all cursor-pointer"
-                  >
-                    Let's Focus!
-                  </button>
+                  <>
+                    <button
+                      id="start-timer-btn"
+                      aria-label="Start focus session timer"
+                      onClick={() => startTimer()}
+                      className="w-full py-4 bg-[#22c55e] text-[#0a0a0a] text-sm font-black uppercase tracking-widest rounded-xl border-2 border-[#2a2a2a] dark:border-amber-400 shadow-[0_4px_0_#0a0a0a] dark:shadow-[0_4px_0_#27272a] active:translate-y-1 active:shadow-none transition-all cursor-pointer"
+                    >
+                      Let's Focus!
+                    </button>
+
+                    <button
+                      type="button"
+                      id="schedule-timer-btn"
+                      aria-label="Schedule a timer to start at a specified time"
+                      onClick={() => setShowScheduleModal(true)}
+                      className="w-full py-3 bg-stone-50 hover:bg-stone-100 dark:bg-zinc-800 dark:hover:bg-zinc-750 text-[#0a0a0a] dark:text-amber-400 text-xs font-black uppercase tracking-wider rounded-xl border-2 border-[#2a2a2a] dark:border-amber-400/40 transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-xs active:translate-y-0.5"
+                    >
+                      <AlarmClock className="w-4 h-4 text-emerald-600 dark:text-amber-400" />
+                      <span>{state.scheduledTimer ? 'Edit Scheduled Timer' : 'Schedule Timer for Later'}</span>
+                    </button>
+                  </>
                 )}
               </div>
 
@@ -3087,6 +3288,48 @@ export default function App() {
         onClose={() => setShowFeedbackModal(false)}
         username={state.username}
       />
+
+      {/* 14. Schedule Timer Modal */}
+      <ScheduleTimerModal
+        isOpen={showScheduleModal}
+        onClose={() => setShowScheduleModal(false)}
+        onSchedule={handleScheduleTimer}
+        initialScheduledTimer={state.scheduledTimer}
+        defaultDuration={timerDuration}
+      />
+
+      {/* 15. Scheduled Session Ready Alert Modal */}
+      <ScheduledSessionReadyModal
+        isOpen={showScheduledReadyModal}
+        scheduledTimer={state.scheduledTimer}
+        onStartNow={handleStartScheduledNow}
+        onSnooze={handleSnoozeScheduled}
+        onDismiss={handleCancelScheduledTimer}
+      />
+
+      {/* 16. Scheduled Timer Notification Toast */}
+      {scheduledNotificationToast && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 w-11/12 max-w-sm bg-white dark:bg-zinc-900 border-2 border-emerald-500 dark:border-amber-400 rounded-2xl p-3.5 shadow-xl animate-in slide-in-from-top-4 duration-300 flex items-start space-x-3">
+          <div className="w-8 h-8 rounded-xl bg-[#22c55e] text-black flex items-center justify-center shrink-0">
+            <AlarmClock className="w-4 h-4 stroke-[2.5]" />
+          </div>
+          <div className="flex-1 text-left min-w-0">
+            <h5 className="text-xs font-black uppercase text-[#0a0a0a] dark:text-amber-400">
+              {scheduledNotificationToast.title}
+            </h5>
+            <p className="text-[11px] font-semibold text-stone-600 dark:text-amber-300/85 truncate">
+              {scheduledNotificationToast.body}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setScheduledNotificationToast(null)}
+            className="text-stone-400 hover:text-stone-600 dark:text-amber-400/60 dark:hover:text-amber-400 p-1 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }

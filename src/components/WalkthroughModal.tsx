@@ -172,6 +172,17 @@ export const WalkthroughModal: React.FC<WalkthroughModalProps> = ({
               🔔 Includes audio bell chime & background tab notifications when finished!
             </p>
           </div>
+
+          {/* Schedule timer highlight */}
+          <div className="p-2.5 rounded-xl bg-amber-50/80 dark:bg-zinc-800 border border-amber-200 dark:border-amber-400/30 text-[10px] space-y-0.5">
+            <span className="font-black text-[#0a0a0a] dark:text-amber-400 flex items-center gap-1 uppercase tracking-wide text-[9px]">
+              <span>⏰</span>
+              <span>Schedule For Later:</span>
+            </span>
+            <p className="text-stone-600 dark:text-amber-300/80 text-[10px] leading-snug">
+              Tap "Schedule" to set a session to auto-start at any future time (e.g. 2:00 PM).
+            </p>
+          </div>
         </div>
       ),
     },
@@ -416,11 +427,11 @@ export const WalkthroughModal: React.FC<WalkthroughModalProps> = ({
             <div className="space-y-1 text-center">
               <h2
                 id="walkthrough-title"
-                className="text-lg font-black text-[#0a0a0a] dark:text-zinc-100 uppercase tracking-tight"
+                className="text-lg font-black text-[#0a0a0a] dark:text-amber-400 uppercase tracking-tight"
               >
                 {step.title}
               </h2>
-              <p className="text-xs text-stone-600 dark:text-zinc-400 leading-relaxed max-w-sm mx-auto">
+              <p className="text-xs text-stone-600 dark:text-amber-300/85 leading-relaxed max-w-sm mx-auto">
                 {step.description}
               </p>
             </div>

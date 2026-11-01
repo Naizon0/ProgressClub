@@ -229,4 +229,5 @@ export const INITIAL_STATE: AppState = {
   lastActiveDate: '',
   bixLossHistory: [],
   pendingLossModal: null,
+  scheduledTimer: null,
 };

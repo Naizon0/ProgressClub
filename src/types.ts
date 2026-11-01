@@ -51,6 +51,18 @@ export interface FeedbackEntry {
   appVersion: string;
 }
 
+export interface ScheduledTimer {
+  id: string;
+  targetTime: string; // ISO string e.g. "2026-10-29T14:00:00"
+  durationMinutes: number;
+  breakMinutes?: number;
+  label?: string;
+  autoStart: boolean;
+  focusActivity?: 'desk-work' | 'exercise';
+  createdAt: string;
+  notified?: boolean;
+}
+
 export interface AppState {
   username: string;
   onboardingCompleted: boolean;
@@ -79,6 +91,7 @@ export interface AppState {
   lastActiveDate?: string; // YYYY-MM-DD
   bixLossHistory?: BixLossRecord[];
   pendingLossModal?: BixLossRecord | null;
+  scheduledTimer?: ScheduledTimer | null;
   settings: {
     durationDefault: number; // e.g. 25
     breakTimer: number; // e.g. 5

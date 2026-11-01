@@ -181,3 +181,109 @@ export async function sendSessionDoneNotification(
     return false;
   }
 }
+
+/**
+ * Plays an upbeat alert chime when a scheduled focus timer reaches its start time.
+ */
+export function playScheduledAlertChime() {
+  try {
+    const AudioContextClass =
+      window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+
+    const ctx = new AudioContextClass();
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
+    const now = ctx.currentTime;
+    // Ascending melody: G4 (392Hz), C5 (523.25Hz), E5 (659.25Hz), G5 (783.99Hz)
+    const notes = [
+      { freq: 392.0, start: 0, duration: 0.18 },
+      { freq: 523.25, start: 0.14, duration: 0.18 },
+      { freq: 659.25, start: 0.28, duration: 0.22 },
+      { freq: 783.99, start: 0.44, duration: 0.6 },
+    ];
+
+    notes.forEach(({ freq, start, duration }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, now + start);
+
+      gain.gain.setValueAtTime(0.0001, now + start);
+      gain.gain.linearRampToValueAtTime(0.22, now + start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + start + duration);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now + start);
+      osc.stop(now + start + duration);
+    });
+  } catch (e) {
+    // Silently ignore if audio context is blocked
+  }
+}
+
+/**
+ * Trigger system notification when a scheduled timer starts or is ready to begin.
+ */
+export async function sendScheduledTimerNotification(params: {
+  username?: string;
+  durationMinutes: number;
+  label?: string;
+  autoStarted: boolean;
+}): Promise<boolean> {
+  const { username, durationMinutes, label, autoStarted } = params;
+
+  // Always play alert chime
+  playScheduledAlertChime();
+
+  const title = autoStarted ? `⏰ Scheduled Session Started!` : `🔔 Scheduled Session Ready!`;
+  const labelText = label ? ` ("${label}")` : '';
+  const greeting = username ? `${username}, ` : '';
+  const body = autoStarted
+    ? `${greeting}your ${durationMinutes}-minute focus session${labelText} has just started. Let's do this!`
+    : `${greeting}it's time for your ${durationMinutes}-minute focus session${labelText}! Tap to start.`;
+
+  if (!isNotificationSupported() || Notification.permission !== 'granted') {
+    return false;
+  }
+
+  const notificationOptions: NotificationOptions & { renotify?: boolean } = {
+    body,
+    icon: '/icon.svg',
+    badge: '/icon.svg',
+    tag: 'progress-club-scheduled-session',
+    renotify: true,
+    requireInteraction: true,
+  };
+
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.ready;
+      if (registration && registration.showNotification) {
+        await registration.showNotification(title, notificationOptions);
+        return true;
+      }
+    } catch (swErr) {
+      // Fall through to standard notification
+    }
+  }
+
+  try {
+    const notification = new Notification(title, notificationOptions);
+    notification.onclick = () => {
+      try {
+        window.focus();
+        notification.close();
+      } catch (e) {}
+    };
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
