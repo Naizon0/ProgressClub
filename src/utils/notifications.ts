@@ -183,7 +183,8 @@ export async function sendSessionDoneNotification(
 }
 
 /**
- * Plays an upbeat alert chime when a scheduled focus timer reaches its start time.
+ * Plays an upbeat, distinctive alarm chime when a scheduled focus timer reaches its start time.
+ * Synthesizes a two-phrase musical chime via Web Audio API.
  */
 export function playScheduledAlertChime() {
   try {
@@ -197,12 +198,19 @@ export function playScheduledAlertChime() {
     }
 
     const now = ctx.currentTime;
-    // Ascending melody: G4 (392Hz), C5 (523.25Hz), E5 (659.25Hz), G5 (783.99Hz)
+    // Two-phrase musical sequence to alert the user clearly:
+    // Phrase 1 (G4 -> C5 -> E5 -> G5)
+    // Phrase 2 (C5 -> E5 -> G5 -> C6)
     const notes = [
-      { freq: 392.0, start: 0, duration: 0.18 },
-      { freq: 523.25, start: 0.14, duration: 0.18 },
-      { freq: 659.25, start: 0.28, duration: 0.22 },
-      { freq: 783.99, start: 0.44, duration: 0.6 },
+      { freq: 392.0, start: 0, duration: 0.16 },
+      { freq: 523.25, start: 0.14, duration: 0.16 },
+      { freq: 659.25, start: 0.28, duration: 0.2 },
+      { freq: 783.99, start: 0.44, duration: 0.4 },
+      // Pause then louder celebratory fanfare:
+      { freq: 523.25, start: 0.85, duration: 0.16 },
+      { freq: 659.25, start: 0.98, duration: 0.18 },
+      { freq: 783.99, start: 1.12, duration: 0.22 },
+      { freq: 1046.5, start: 1.30, duration: 0.8 },
     ];
 
     notes.forEach(({ freq, start, duration }) => {
@@ -213,7 +221,7 @@ export function playScheduledAlertChime() {
       osc.frequency.setValueAtTime(freq, now + start);
 
       gain.gain.setValueAtTime(0.0001, now + start);
-      gain.gain.linearRampToValueAtTime(0.22, now + start + 0.02);
+      gain.gain.linearRampToValueAtTime(0.25, now + start + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + start + duration);
 
       osc.connect(gain);
@@ -245,8 +253,8 @@ export async function sendScheduledTimerNotification(params: {
   const labelText = label ? ` ("${label}")` : '';
   const greeting = username ? `${username}, ` : '';
   const body = autoStarted
-    ? `${greeting}your ${durationMinutes}-minute focus session${labelText} has just started. Let's do this!`
-    : `${greeting}it's time for your ${durationMinutes}-minute focus session${labelText}! Tap to start.`;
+    ? `${greeting}your ${durationMinutes}-minute focus session${labelText} has just started. Tap to open Progress Club!`
+    : `${greeting}it's time for your ${durationMinutes}-minute focus session${labelText}! Tap to open & start.`;
 
   if (!isNotificationSupported() || Notification.permission !== 'granted') {
     return false;
@@ -259,6 +267,9 @@ export async function sendScheduledTimerNotification(params: {
     tag: 'progress-club-scheduled-session',
     renotify: true,
     requireInteraction: true,
+    data: {
+      url: '/?action=quickstart',
+    },
   };
 
   if ('serviceWorker' in navigator) {

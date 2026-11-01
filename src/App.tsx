@@ -391,20 +391,40 @@ export default function App() {
     }
   }, []);
 
-  // Frictionless Quick Start from URL parameter/hash trigger (e.g. ?start=true or #quickstart)
+  // Frictionless Quick Start from URL parameter/hash trigger (e.g. ?start=true or #quickstart) & SW notification message
   useEffect(() => {
     try {
       const urlParams = new URLSearchParams(window.location.search);
       const hash = window.location.hash;
       if (urlParams.get('start') === 'true' || urlParams.get('action') === 'quickstart' || hash === '#quickstart') {
         if (state.onboardingCompleted && !timerIsActive) {
+          setActiveTab('home');
+          setActiveOverlay('none');
           setTimeout(() => {
             startTimer();
           }, 400);
         }
       }
     } catch (e) {}
-  }, [state.onboardingCompleted]);
+
+    // Listen for Service Worker notification click message to bring user directly to focus screen
+    const handleSWMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'SCHEDULED_TIMER_OPEN') {
+        try {
+          window.focus();
+        } catch (e) {}
+        setActiveTab('home');
+        setActiveOverlay('none');
+      }
+    };
+
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', handleSWMessage);
+      return () => {
+        navigator.serviceWorker.removeEventListener('message', handleSWMessage);
+      };
+    }
+  }, [state.onboardingCompleted, timerIsActive]);
 
   // Hardware/Browser Back Button Navigation Interception (Android & Webview Support)
   useEffect(() => {
@@ -800,6 +820,28 @@ export default function App() {
         }
         scheduledAlertTriggeredRef.current = currentSched.id;
 
+        // Automatically bring the app tab to focus
+        try {
+          window.focus();
+        } catch (e) {}
+
+        // Automatically open the Home tab and dismiss any obscuring overlays/modals
+        setActiveTab('home');
+        setActiveOverlay('none');
+        setShowScheduleModal(false);
+        setShowExitConfirm(false);
+
+        // Flash tab title in browser bar to immediately alert user across tabs
+        let flashStep = 0;
+        const flashTimer = setInterval(() => {
+          flashStep++;
+          if (flashStep > 12 || document.hasFocus()) {
+            clearInterval(flashTimer);
+            return;
+          }
+          document.title = flashStep % 2 === 0 ? '⏰ FOCUS TIME! • Progress Club' : '🔔 [SESSION READY]';
+        }, 1000);
+
         // If user already has an active session going, just clear schedule
         if (timerIsActive) {
           saveState({
@@ -809,7 +851,7 @@ export default function App() {
           return;
         }
 
-        // Fire browser notification & alert chime
+        // Fire system desktop/mobile notification & rich alert chime
         sendScheduledTimerNotification({
           username: state.username,
           durationMinutes: currentSched.durationMinutes,
